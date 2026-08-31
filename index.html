@@ -1,0 +1,1542 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Berechnung des Energieausweises nach OIB-Richtlinie 6 und ÖNORM B 8110-6 — mit vollständigem Rechenweg und Nachweisprüfung.">
+<meta name="color-scheme" content="light dark">
+<title>Energieausweis-Werkbank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{color-scheme:light dark}
+body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#EDF0F1;color:#111A1D}
+img{max-width:100%}
+[hidden]:not([hidden=until-found]){display:none!important}
+</style>
+<!-- Erzeugt aus src/werkbank.html durch build.mjs — nicht direkt bearbeiten. -->
+</head>
+<body>
+<style>
+:root{
+  --ground:#EDF0F1; --surface:#FFFFFF; --surface-2:#E4E9EA; --surface-3:#D7DEE0;
+  --ink:#111A1D; --ink-2:#4B5A5F; --ink-3:#78888D;
+  --rule:#CDD6D8; --rule-2:#AEBBBE;
+  --accent:#0F6E75; --accent-2:#0B565C; --accent-soft:#DAEDEE; --on-accent:#FFFFFF;
+  --ok:#1E6B45; --ok-soft:#DBEAE1;
+  --warn:#8A5010; --warn-soft:#F5E7D4;
+  --bad:#9B2E26; --bad-soft:#F5DDDA;
+  --loss:#B4563C; --gain:#0F6E75; --unused:#9AA8AC;
+  --f-ui:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --f-mono:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+  --sh:0 1px 2px rgba(17,26,29,.05),0 10px 26px -18px rgba(17,26,29,.35);
+  --r:5px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0B1113; --surface:#131B1E; --surface-2:#1A2427; --surface-3:#233033;
+    --ink:#E3ECEE; --ink-2:#9AABB0; --ink-3:#6F8286;
+    --rule:#253134; --rule-2:#3A4A4E;
+    --accent:#4FC3C9; --accent-2:#7BD8DC; --accent-soft:#0F3437; --on-accent:#062024;
+    --ok:#5FBE8B; --ok-soft:#102C1E;
+    --warn:#D9974A; --warn-soft:#33230F;
+    --bad:#E0776C; --bad-soft:#33170F;
+    --loss:#D9825F; --gain:#4FC3C9; --unused:#5C6D71;
+    --sh:0 1px 2px rgba(0,0,0,.5),0 12px 28px -20px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0B1113; --surface:#131B1E; --surface-2:#1A2427; --surface-3:#233033;
+  --ink:#E3ECEE; --ink-2:#9AABB0; --ink-3:#6F8286;
+  --rule:#253134; --rule-2:#3A4A4E;
+  --accent:#4FC3C9; --accent-2:#7BD8DC; --accent-soft:#0F3437; --on-accent:#062024;
+  --ok:#5FBE8B; --ok-soft:#102C1E;
+  --warn:#D9974A; --warn-soft:#33230F;
+  --bad:#E0776C; --bad-soft:#33170F;
+  --loss:#D9825F; --gain:#4FC3C9; --unused:#5C6D71;
+  --sh:0 1px 2px rgba(0,0,0,.5),0 12px 28px -20px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:var(--f-ui);margin:0;text-wrap:balance;line-height:1.2}
+p{margin:0}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- Messleiste ---------- */
+.bar{position:sticky;top:0;z-index:40;background:var(--surface);border-bottom:1px solid var(--rule)}
+.bar-in{max-width:1500px;margin:0 auto;padding:10px 20px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;gap:1px;margin-right:4px}
+.brand b{font-family:var(--f-ui);font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+.brand span{font-family:var(--f-mono);font-size:10px;color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
+.kpis{display:flex;gap:0;flex-wrap:wrap;flex:1;min-width:0}
+.kpi{padding:0 16px;border-left:1px solid var(--rule);display:flex;flex-direction:column;gap:1px;min-width:104px}
+.kpi:first-child{border-left:0;padding-left:0}
+.kpi i{font-style:normal;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.kpi b{font-family:var(--f-mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.15}
+.kpi u{text-decoration:none;font-family:var(--f-mono);font-size:9.5px;color:var(--ink-3)}
+.kpi.hero b{color:var(--accent)}
+.klass{display:flex;align-items:center;gap:8px}
+.kbadge{font-family:var(--f-ui);font-weight:700;font-size:20px;color:#fff;background:var(--unused);border-radius:4px;padding:5px 11px;letter-spacing:-.02em;min-width:56px;text-align:center}
+.verdict{font-family:var(--f-ui);font-size:11px;font-weight:600;padding:5px 10px;border-radius:99px;white-space:nowrap;border:1px solid transparent}
+.v-ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok)}
+.v-no{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}
+.v-na{background:var(--surface-2);color:var(--ink-3);border-color:var(--rule)}
+
+/* ---------- Tabs ---------- */
+.tabs{background:var(--surface);border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:35}
+.tabs-in{max-width:1500px;margin:0 auto;padding:0 20px;display:flex;gap:2px;align-items:center;flex-wrap:wrap}
+.tab{font-family:var(--f-ui);font-size:12.5px;font-weight:600;background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-3);padding:11px 14px;cursor:pointer;letter-spacing:.01em}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.tabs-in .spacer{flex:1}
+.mini{font-family:var(--f-ui);font-size:11.5px;font-weight:600;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--rule);border-radius:var(--r);padding:5px 10px;cursor:pointer}
+.mini:hover{border-color:var(--rule-2);color:var(--ink)}
+
+.wrap{max-width:1500px;margin:0 auto;padding:20px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:20px;align-items:start}
+@media (max-width:1080px){.cols{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- Karten ---------- */
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:14px;overflow:hidden}
+.card>summary{list-style:none;cursor:pointer;padding:13px 16px;display:flex;gap:11px;align-items:baseline;background:var(--surface)}
+.card>summary::-webkit-details-marker{display:none}
+.card>summary:hover{background:var(--surface-2)}
+.step{font-family:var(--f-mono);font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:3px;padding:2px 6px;flex:none;align-self:center}
+.card>summary h3{font-size:14px;font-weight:600;flex:1}
+.card>summary .hint{font-family:var(--f-mono);font-size:10.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right}
+.card>summary::after{content:"▾";color:var(--ink-3);font-size:11px;align-self:center}
+.card[open]>summary::after{content:"▴"}
+.card[open]>summary{border-bottom:1px solid var(--rule)}
+.body{padding:15px 16px 17px}
+.lead{color:var(--ink-2);font-size:12.5px;margin-bottom:13px;max-width:62ch}
+
+/* ---------- Felder ---------- */
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;align-items:end}
+.fields.two{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+label.f{display:flex;flex-direction:column;gap:4px;font-family:var(--f-ui);font-size:11px;font-weight:600;color:var(--ink-2);letter-spacing:.01em;min-width:0}
+label.f .u{font-family:var(--f-mono);font-weight:400;color:var(--ink-3)}
+input[type=text],input[type=number],select{font-family:var(--f-mono);font-size:13px;background:var(--surface);color:var(--ink);border:1px solid var(--rule-2);border-radius:4px;padding:7px 8px;width:100%;min-width:0;font-variant-numeric:tabular-nums}
+select{font-family:var(--f-body);font-size:12.5px}
+input:hover,select:hover{border-color:var(--accent)}
+input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+label.cb{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--ink-2);cursor:pointer}
+label.cb input{width:15px;height:15px;accent-color:var(--accent);flex:none}
+.btn{font-family:var(--f-ui);font-size:12px;font-weight:600;background:var(--accent);color:var(--on-accent);border:0;border-radius:4px;padding:7px 12px;cursor:pointer}
+.btn:hover{background:var(--accent-2)}
+.btn.ghost{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--rule)}
+.btn.ghost:hover{background:var(--surface-3);color:var(--ink)}
+.rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.note{background:var(--surface-2);border-left:2px solid var(--rule-2);padding:9px 12px;font-size:12px;color:var(--ink-2);border-radius:0 3px 3px 0;margin-top:12px}
+.note b{color:var(--ink)}
+.note.acc{background:var(--accent-soft);border-left-color:var(--accent)}
+.note.wrn{background:var(--warn-soft);border-left-color:var(--warn)}
+
+/* ---------- Listen (Bauteile / Fenster) ---------- */
+.list{display:flex;flex-direction:column;gap:9px}
+.item{border:1px solid var(--rule);border-radius:4px;background:var(--surface-2);overflow:hidden}
+.item-hd{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.5fr) 78px 78px 62px 92px 30px;gap:7px;align-items:center;padding:8px 9px}
+.item-hd.win{grid-template-columns:minmax(0,1.5fr) 88px 58px 58px 58px 58px 58px 58px 84px 30px}
+.item-hd input,.item-hd select{background:var(--surface);padding:6px 7px;font-size:12px}
+.res{font-family:var(--f-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;padding-right:2px}
+.res small{display:block;font-size:9.5px;font-weight:400;color:var(--ink-3)}
+.res.bad{color:var(--bad)}
+.res.ok{color:var(--ok)}
+.x{background:none;border:1px solid var(--rule-2);color:var(--ink-3);border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1;padding:0}
+.x:hover{border-color:var(--bad);color:var(--bad)}
+.lhead{display:grid;gap:7px;padding:0 9px 4px;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.lhead.op{grid-template-columns:minmax(0,1.6fr) minmax(0,1.5fr) 78px 78px 62px 92px 30px}
+.lhead.win{grid-template-columns:minmax(0,1.5fr) 88px 58px 58px 58px 58px 58px 58px 84px 30px}
+@media (max-width:900px){
+  .item-hd,.item-hd.win{grid-template-columns:repeat(auto-fit,minmax(112px,1fr))}
+  .lhead{display:none}
+}
+.layers{border-top:1px solid var(--rule);background:var(--surface);padding:9px}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) 74px 84px 100px 26px;gap:7px;align-items:center;margin-bottom:6px}
+.lrow input,.lrow select{padding:5px 7px;font-size:12px}
+.lrow .res{font-size:11px}
+@media (max-width:640px){.lrow{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}}
+
+/* ---------- Rechte Schiene ---------- */
+.rail{position:sticky;top:98px;display:flex;flex-direction:column;gap:14px}
+@media (max-width:1080px){.rail{position:static}}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh);padding:15px 16px}
+.panel h4{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-family:var(--f-mono);margin-bottom:11px}
+.bal{display:flex;gap:14px;align-items:flex-end;height:186px;margin-bottom:10px}
+.bcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px}
+.bseg{border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:10px;font-weight:600;color:#fff;overflow:hidden;min-height:0}
+.blab{font-family:var(--f-mono);font-size:9.5px;color:var(--ink-3);text-align:center;letter-spacing:.05em;text-transform:uppercase;padding-top:5px;border-top:1px solid var(--rule)}
+.blab b{display:block;color:var(--ink);font-size:11.5px;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:9px;font-size:11px;color:var(--ink-2)}
+.legend span{display:flex;align-items:center;gap:5px}
+.sw{width:9px;height:9px;border-radius:2px;flex:none}
+.kv{display:flex;flex-direction:column;gap:0}
+.kv div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--rule);font-size:12px}
+.kv div:last-child{border-bottom:0}
+.kv span{color:var(--ink-2)}
+.kv b{font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.checks{display:flex;flex-direction:column;gap:7px}
+.chk{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.4}
+.dot{width:7px;height:7px;border-radius:50%;flex:none;margin-top:5px}
+.d-ok{background:var(--ok)} .d-wr{background:var(--warn)} .d-bd{background:var(--bad)} .d-in{background:var(--ink-3)}
+.chk b{font-weight:600}
+
+/* ---------- Mono-Ausgabe ---------- */
+.mono{font-family:var(--f-mono);font-size:12.5px;line-height:1.62;white-space:pre;overflow-x:auto;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:15px 17px;color:var(--ink);tab-size:2}
+.mono .c{color:var(--ink-3)}
+.mono .a{color:var(--accent);font-weight:600}
+.mono .big{font-size:15px;font-weight:600;color:var(--accent)}
+.mono .g{color:var(--ok);font-weight:600}
+.mono .r{color:var(--bad);font-weight:600}
+.mono hr{border:0;border-top:1px solid var(--rule);margin:7px 0}
+.blk{margin-bottom:16px}
+.blk>h3{font-size:13.5px;font-weight:600;margin-bottom:8px;display:flex;gap:9px;align-items:baseline}
+.blk>h3 em{font-style:normal;font-family:var(--f-mono);font-size:10.5px;color:var(--ink-3);letter-spacing:.03em}
+
+/* ---------- Tabellen ---------- */
+.tw{overflow-x:auto;border:1px solid var(--rule);border-radius:var(--r);background:var(--surface);margin-bottom:14px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+caption{text-align:left;font-family:var(--f-ui);font-size:12.5px;font-weight:600;padding:11px 13px 9px;color:var(--ink)}
+th,td{padding:7px 11px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+thead th{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.k{font-family:var(--f-mono);font-weight:600;white-space:nowrap}
+tfoot td{font-weight:600;background:var(--surface-2);border-top:1px solid var(--rule-2)}
+
+/* ---------- Ausweis-Blätter ---------- */
+.sheet{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh);padding:26px 28px;margin-bottom:18px;max-width:960px}
+.sheet-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:2px solid var(--ink);padding-bottom:11px;margin-bottom:16px;flex-wrap:wrap}
+.sheet-hd h2{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.sheet-hd .pg{font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);text-align:right}
+.sheet h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-family:var(--f-mono);margin:18px 0 9px}
+.gdata{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px 18px}
+.gdata div{border-bottom:1px solid var(--rule);padding-bottom:5px}
+.gdata i{font-style:normal;display:block;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}
+.gdata b{font-weight:500;font-size:13px}
+.kbars{display:flex;flex-direction:column;gap:9px}
+.kbar{display:grid;grid-template-columns:126px minmax(0,1fr) 118px;gap:11px;align-items:center}
+.kbar .nm{font-family:var(--f-ui);font-size:12px;font-weight:600;line-height:1.25}
+.kbar .nm em{display:block;font-style:normal;font-weight:400;font-size:10px;color:var(--ink-3);font-family:var(--f-mono)}
+.ktrack{background:var(--surface-2);border-radius:3px;height:26px;position:relative;overflow:hidden;border:1px solid var(--rule)}
+.kfill{height:100%;border-radius:2px 0 0 2px;min-width:2px}
+.kbar .vl{font-family:var(--f-mono);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.kbar .vl em{display:block;font-style:normal;font-size:9.5px;font-weight:400;color:var(--ink-3)}
+.scale{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.srow{display:grid;grid-template-columns:52px minmax(0,1fr);gap:9px;align-items:center;opacity:.5}
+.srow.hit{opacity:1}
+.sbadge{font-family:var(--f-ui);font-weight:700;font-size:12.5px;color:#fff;text-align:center;border-radius:3px;padding:3px 0}
+.srow.hit .sbadge{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
+.sbar{height:17px;display:flex;align-items:center;padding-left:8px;font-family:var(--f-mono);font-size:10px;color:#fff;border-radius:2px;white-space:nowrap}
+.srow .sr{font-family:var(--f-mono);font-size:10.5px;color:var(--ink-2);white-space:nowrap}
+.foot{margin-top:20px;padding-top:11px;border-top:1px solid var(--rule);font-size:11px;color:var(--ink-3);line-height:1.5}
+
+.disc{background:var(--warn-soft);border:1px solid var(--warn);border-radius:var(--r);padding:12px 15px;font-size:12.5px;color:var(--ink);margin-bottom:16px;line-height:1.5}
+.disc b{color:var(--warn)}
+textarea{width:100%;font-family:var(--f-mono);font-size:11.5px;background:var(--surface);color:var(--ink);border:1px solid var(--rule-2);border-radius:4px;padding:9px;min-height:130px;resize:vertical}
+.intro{max-width:70ch;color:var(--ink-2);font-size:13px;margin-bottom:16px}
+.intro h2{font-size:17px;color:var(--ink);margin-bottom:7px}
+
+@media print{
+  .bar,.tabs,.noprint{display:none!important}
+  body{background:#fff}
+  .wrap{padding:0;max-width:none}
+  .sheet{box-shadow:none;border:0;page-break-after:always;max-width:none;padding:0 0 20px}
+}
+</style>
+
+<header class="bar noprint">
+  <div class="bar-in">
+    <div class="brand"><b>Energieausweis-Werkbank</b><span id="brandSub">OIB RL 6 · ÖNORM B 8110-6</span></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="klass"><div class="kbadge" id="kbadge">–</div><div class="verdict v-na" id="verdict">Nachweis</div></div>
+  </div>
+</header>
+
+<nav class="tabs noprint">
+  <div class="tabs-in">
+    <button class="tab" id="tab-eingabe" aria-selected="true" data-p="p-eingabe" type="button">Eingabe</button>
+    <button class="tab" id="tab-rechenweg" aria-selected="false" data-p="p-rechenweg" type="button">Rechenweg</button>
+    <button class="tab" id="tab-ausweis" aria-selected="false" data-p="p-ausweis" type="button">Ausweis</button>
+    <button class="tab" id="tab-referenz" aria-selected="false" data-p="p-referenz" type="button">Referenz</button>
+    <button class="tab" id="tab-projekt" aria-selected="false" data-p="p-projekt" type="button">Projekt</button>
+    <span class="spacer"></span>
+    <button class="mini" id="btnDruck" type="button">Drucken / PDF</button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div id="p-eingabe"><div class="cols">
+    <div id="inputCol"></div>
+    <aside class="rail" id="rail"></aside>
+  </div></div>
+
+  <div id="p-rechenweg" hidden></div>
+  <div id="p-ausweis" hidden></div>
+  <div id="p-referenz" hidden></div>
+  <div id="p-projekt" hidden></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   1 — Konstanten aus OIB RL 6 / ÖNORM B 8110-5/-6
+   ============================================================ */
+
+/* Opake Bauteiltypen: Umax [W/m²K] (OIB RL 6, Tabelle 3),
+   Standard-Temperaturkorrekturfaktor f, Übergangswiderstände Rsi/Rse */
+var TYP = {
+  awAussen : {nm:'Wand gegen Außenluft',                umax:0.35, f:1.0, rsi:0.13, rse:0.04},
+  awDach   : {nm:'Wand gegen unbeheizten Dachraum',     umax:0.35, f:0.9, rsi:0.13, rse:0.04},
+  awUnbeh  : {nm:'Wand gegen unbeheizt / Garage',       umax:0.60, f:0.8, rsi:0.13, rse:0.04},
+  awErd    : {nm:'Wand erdberührt',                     umax:0.40, f:0.7, rsi:0.17, rse:0.00},
+  awNachb  : {nm:'Wand gegen Nachbargrundstück',        umax:0.50, f:0.5, rsi:0.13, rse:0.04},
+  awTrenn  : {nm:'Trennwand zw. Nutzungseinheiten',     umax:1.30, f:0.5, rsi:0.13, rse:0.13},
+  dcAussen : {nm:'Decke / Dachschräge gegen Außenluft', umax:0.20, f:1.0, rsi:0.10, rse:0.04},
+  dcUnbeh  : {nm:'Decke gegen unbeheizten Dachraum',    umax:0.40, f:0.9, rsi:0.10, rse:0.04},
+  dcGarage : {nm:'Decke gegen Garage',                  umax:0.30, f:0.8, rsi:0.17, rse:0.04},
+  dcTrenn  : {nm:'Decke zw. Nutzungseinheiten',         umax:0.90, f:0.5, rsi:0.10, rse:0.10},
+  bdErd    : {nm:'Boden erdberührt',                    umax:0.40, f:0.7, rsi:0.17, rse:0.00},
+  bdAussen : {nm:'Decke gegen Außenluft (abwärts)',     umax:0.20, f:1.0, rsi:0.17, rse:0.04}
+};
+
+/* Transparente Bauteile: Umax nach OIB RL 6 */
+var FTYP = {
+  fenWG  : {nm:'Fenster Wohngebäude',            umax:1.40},
+  fenNWG : {nm:'Fenster Nicht-Wohngebäude',      umax:1.70},
+  fenVert: {nm:'Transparentes Bauteil vertikal', umax:1.70},
+  fenSchr: {nm:'Transparent horizontal/schräg',  umax:2.00},
+  dachF  : {nm:'Dachflächenfenster',             umax:1.70},
+  tuer   : {nm:'Tür unverglast gegen Außenluft', umax:1.70},
+  tor    : {nm:'Tor gegen Außenluft',            umax:2.50}
+};
+
+/* Strahlungsangebot der Heizperiode je Orientierung [kWh/m²].
+   Richtwerte Alpennordrand — im Klima-Block überschreibbar. */
+var ORIENT = ['S','SO','SW','O','W','NO','NW','N','HOR'];
+var RAD_DEF = {S:371, SO:300, SW:300, O:225, W:225, NO:180, NW:180, N:152, HOR:400};
+
+/* Rechenwerte λ [W/mK] — ÖNORM B 8110-7 / Herstellerangaben */
+var MAT = [
+  ['Stahlbeton',2.30],['Vollziegel',0.80],['Hochlochziegel ungefüllt',0.45],
+  ['Hochlochziegel gefüllt',0.09],['Kalksandstein',1.10],['Porenbeton',0.12],
+  ['Nadelholz',0.13],['Innenputz Kalk-Gips',0.70],['Außenputz Zement',0.80],
+  ['Zementestrich',1.40],['Gipskartonplatte',0.25],['EPS-Fassadendämmung',0.035],
+  ['Mineralwolle',0.035],['XPS Perimeter',0.035],['PUR / PIR',0.024],
+  ['Holzfaserdämmplatte',0.044],['Zellulose-Einblasdämmung',0.041]
+];
+
+/* Konversionsfaktoren OIB RL 6:2023, Tabelle 4 */
+var FAC = {
+  el : {nm:'Strom (Liefermix)',   pe:1.76, ne:0.79, co:0.156},
+  gas: {nm:'Erdgas',              pe:1.10, ne:1.10, co:0.201},
+  oel: {nm:'Heizöl',              pe:1.20, ne:1.20, co:0.271},
+  koh: {nm:'Kohle',               pe:1.46, ne:1.46, co:0.360},
+  bio: {nm:'Biomasse fest',       pe:1.13, ne:0.10, co:0.009},
+  fw : {nm:'Fernwärme aus KWK',   pe:0.59, ne:0.41, co:0.067},
+  aw : {nm:'Abwärme',             pe:1.00, ne:1.00, co:0.022}
+};
+
+/* Wärmeerzeuger: Nutzungsgrad bzw. JAZ, Energieträger, Hilfsenergie [kWh/m²a] */
+var ERZ = {
+  wpSole : {nm:'Sole/Wasser-Wärmepumpe · JAZ 4,0', eff:4.00, tr:'el',  hilf:1.5},
+  wpLuft : {nm:'Luft/Wasser-Wärmepumpe · JAZ 3,2', eff:3.20, tr:'el',  hilf:1.5},
+  wpAlt  : {nm:'Luft/Wasser-WP, älter · JAZ 2,6',  eff:2.60, tr:'el',  hilf:1.2},
+  fern   : {nm:'Fernwärme KWK · η 0,96',           eff:0.96, tr:'fw',  hilf:0.3},
+  pellets: {nm:'Pelletskessel · η 0,80',           eff:0.80, tr:'bio', hilf:0.6},
+  stueck : {nm:'Stückholzkessel · η 0,72',         eff:0.72, tr:'bio', hilf:0.6},
+  gasBW  : {nm:'Gas-Brennwert · η 0,92',           eff:0.92, tr:'gas', hilf:0.4},
+  gasAlt : {nm:'Gas-Kessel alt · η 0,80',          eff:0.80, tr:'gas', hilf:0.4},
+  oelBW  : {nm:'Öl-Brennwert · η 0,88',            eff:0.88, tr:'oel', hilf:0.4},
+  oelAlt : {nm:'Öl-Kessel alt · η 0,75',           eff:0.75, tr:'oel', hilf:0.4},
+  direkt : {nm:'Direktstrom-Heizung · η 0,98',     eff:0.98, tr:'el',  hilf:0.2},
+  frei   : {nm:'frei eingeben …',                  eff:1.00, tr:'el',  hilf:0.5}
+};
+
+/* Zulässiger HWB_Ref,RK = C × (1 + x/ℓc) */
+var REQ = [
+  {n:'RL 6:2023 · Weg A (Endenergie)',    neu:[10,3.0], ren:[17,2.5], std:true},
+  {n:'RL 6:2023 · Weg B (f_GEE ≤ 0,75)',  neu:[16,3.0], ren:[25,2.5]},
+  {n:'RL 6:2025 · Nachweisweg 1',         neu:[ 9,3.0], ren:[14,2.8]},
+  {n:'RL 6:2025 · Nachweisweg 2',         neu:[13,3.0], ren:[20,2.5]},
+  {n:'RL 6:2025 · NW 1 ab 2030 (NEG)',    neu:[ 8,3.0], ren:[14,2.8]}
+];
+
+/* Effizienzklassen nach HWB (Skala OIB RL 6:2023) */
+var CLS = [
+  {k:'A++',max:10,  c:'#0B7A45', t:'Passivhaus'},
+  {k:'A+', max:15,  c:'#2E9C50', t:'Niedrigstenergie'},
+  {k:'A',  max:25,  c:'#63A828', t:'sehr effizienter Neubau'},
+  {k:'B',  max:50,  c:'#9DA81C', t:'Neubau-Mindeststandard'},
+  {k:'C',  max:100, c:'#DBA30C', t:'gut sanierter Bestand'},
+  {k:'D',  max:150, c:'#DB800C', t:'Bestand 1980er–2000er'},
+  {k:'E',  max:200, c:'#CF5A1B', t:'unsanierter Altbau'},
+  {k:'F',  max:250, c:'#BB3822', t:'sehr schlecht'},
+  {k:'G',  max:1e9, c:'#A0221B', t:'dringend sanierungsbedürftig'}
+];
+
+/* Nutzungsprofile — qi [W/m² BF] und WWWB [kWh/m²a] als Richtwerte */
+var KAT = {
+  wohn : {nm:'Wohngebäude',            qi:3.75, wwwb:12.5, n:0.40},
+  buero: {nm:'Bürogebäude',            qi:4.50, wwwb: 2.0, n:0.40},
+  schule:{nm:'Schule / Kindergarten',  qi:4.00, wwwb: 3.0, n:0.40},
+  hotel: {nm:'Hotel / Pension',        qi:4.00, wwwb:18.0, n:0.40},
+  sonst: {nm:'sonstiges konditioniert',qi:3.75, wwwb: 5.0, n:0.40}
+};
+
+var BAUW = {leicht:{nm:'leicht (Holzbau, Trockenbau)',c:40}, mittel:{nm:'mittelschwer (Standard)',c:60}, schwer:{nm:'schwer (Massivbau)',c:90}};
+
+/* ============================================================
+   2 — Hilfsfunktionen
+   ============================================================ */
+var uid = 0; function nid(){ uid++; return 'e'+uid; }
+function num(v, d){
+  if (typeof v === 'number') return isFinite(v) ? v : d;
+  if (v === null || v === undefined) return d;
+  var s = String(v).trim().replace(/\s/g,'').replace(/\./g, function(m,o,str){
+    return str.indexOf(',') > -1 ? '' : '.';   /* 1.234,5 → 1234.5 ; 12.5 → 12.5 */
+  }).replace(',', '.');
+  if (s === '' || s === '-') return d;
+  var n = parseFloat(s);
+  return isFinite(n) ? n : d;
+}
+function fmt(x, d){
+  if (x === null || x === undefined || !isFinite(x)) return '–';
+  return x.toLocaleString('de-AT', {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function esc(s){ return String(s === null || s === undefined ? '' : s).replace(/[<>&"]/g, function(c){
+  return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]; }); }
+function pad(s, n){ s = String(s); return s.length >= n ? s : s + new Array(n - s.length + 1).join(' '); }
+function padL(s, n){ s = String(s); return s.length >= n ? s : new Array(n - s.length + 1).join(' ') + s; }
+function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+function sum(arr, k){ var s = 0; for (var i=0;i<arr.length;i++) s += arr[i][k] || 0; return s; }
+function el(id){ return document.getElementById(id); }
+
+/* ============================================================
+   3 — Zustand
+   ============================================================ */
+function leerBauteil(typ){
+  var t = TYP[typ] || TYP.awAussen;
+  return {id:nid(), nm:'', typ:typ||'awAussen', a:'', mode:'direkt', u:'', f:t.f,
+          sch:[{id:nid(), nm:'', d:'', lam:''}]};
+}
+function leerFenster(o){
+  return {id:nid(), nm:'', typ:'fenWG', orient:o||'S', mode:'masse',
+          stk:1, b:'', h:'', a:'', u:'', g:0.60, ff:0.70, fs:0.85, f:1.0};
+}
+
+var S = null;
+
+function demoA(){
+  return {
+    meta:{name:'Einfamilienhaus, Variante A', adresse:'', kg:'', gstnr:'', baujahr:'2026',
+          ersteller:'', kat:'wohn', ort:'Tirol, ca. 600 m', seehoehe:600, anlass:'neu'},
+    geo:{bgf:160, v:448, bauw:'mittel', cwirk:60},
+    klima:{
+      sk:{hgt:3500, ht:215, rad:copy(RAD_DEF)},
+      rk:{hgt:3000, ht:205, rad:copy(RAD_DEF)}
+    },
+    wb:{mode:'pauschal', wert:''},
+    bauteile:[
+      mk({nm:'Außenwand',            typ:'awAussen', a:177.6, u:0.20, f:1.0}),
+      mk({nm:'Oberste Geschoßdecke', typ:'dcUnbeh',  a:80,    u:0.15, f:0.9}),
+      mk({nm:'Bodenplatte',          typ:'bdErd',    a:80,    u:0.28, f:0.7})
+    ],
+    fenster:[
+      mkf({nm:'Fenster Süd',  orient:'S', mode:'direkt', a:10, u:1.10}),
+      mkf({nm:'Fenster Ost',  orient:'O', mode:'direkt', a:4,  u:1.10}),
+      mkf({nm:'Fenster West', orient:'W', mode:'direkt', a:6,  u:1.10}),
+      mkf({nm:'Fenster Nord', orient:'N', mode:'direkt', a:4,  u:1.10})
+    ],
+    lft:{n:0.40, wrgAktiv:false, wrg:80},
+    nutz:{qi:3.75, wwwb:9.0},
+    anl:{verluste:12, erz:'wpLuft', eff:'', tr:'el', hilf:'', solarWW:0,
+         pvKwp:0, pvErtrag:950, pvSpeicher:false, haushalt:20, haushaltInkl:false}
+  };
+}
+function copy(o){ var r={}; for (var k in o) if (Object.prototype.hasOwnProperty.call(o,k)) r[k]=o[k]; return r; }
+function mk(o){ var b = leerBauteil(o.typ); for (var k in o) b[k]=o[k]; return b; }
+function mkf(o){ var f = leerFenster(o.orient); for (var k in o) f[k]=o[k]; return f; }
+
+function leeresProjekt(){
+  var d = demoA();
+  d.meta = {name:'Neues Projekt', adresse:'', kg:'', gstnr:'', baujahr:'', ersteller:'',
+            kat:'wohn', ort:'', seehoehe:'', anlass:'neu'};
+  d.geo = {bgf:'', v:'', bauw:'mittel', cwirk:60};
+  d.bauteile = [leerBauteil('awAussen'), leerBauteil('dcUnbeh'), leerBauteil('bdErd')];
+  d.fenster  = [leerFenster('S'), leerFenster('N')];
+  d.nutz = {qi:3.75, wwwb:12.5};
+  return d;
+}
+
+/* ============================================================
+   4 — Rechenkern
+   ============================================================ */
+
+/* U-Wert aus Schichtaufbau: R_T = Rsi + Σ(d/λ) + Rse ; U = 1/R_T */
+function uSchichten(bt){
+  var t = TYP[bt.typ] || TYP.awAussen, s = 0, det = [];
+  for (var i=0;i<bt.sch.length;i++){
+    var d = num(bt.sch[i].d, 0)/100, l = num(bt.sch[i].lam, 0);
+    if (d > 0 && l > 0){ var R = d/l; s += R; det.push({nm:bt.sch[i].nm||'Schicht', d:d*100, lam:l, R:R}); }
+  }
+  var RT = t.rsi + s + t.rse;
+  return {u: RT > 0 ? 1/RT : 0, RT:RT, rsi:t.rsi, rse:t.rse, det:det, sumR:s};
+}
+
+/* Ausnutzungsgrad η nach ÖNORM B 8110-6 */
+function ausnutzung(gamma, a){
+  if (!isFinite(gamma) || gamma <= 0) return 1;
+  if (Math.abs(gamma - 1) < 1e-9) return a/(a + 1);
+  var p = Math.pow(gamma, a), q = Math.pow(gamma, a + 1);
+  if (!isFinite(p) || !isFinite(q) || Math.abs(1 - q) < 1e-12) return a/(a + 1);
+  return clamp((1 - p)/(1 - q), 0, 1);
+}
+
+function rechne(){
+  var bgf = num(S.geo.bgf, 0), V = num(S.geo.v, 0);
+
+  /* --- Bauteile --- */
+  var bt = S.bauteile.map(function(b){
+    var t = TYP[b.typ] || TYP.awAussen;
+    var sch = uSchichten(b);
+    var u = b.mode === 'schichten' ? sch.u : num(b.u, 0);
+    var A = num(b.a, 0), f = num(b.f, t.f);
+    return {ref:b, nm:b.nm || t.nm, typ:t, A:A, u:u, f:f, L:A*u*f, sch:sch,
+            verstoss: u > 0 && u > t.umax + 1e-9};
+  });
+  var fe = S.fenster.map(function(w){
+    var t = FTYP[w.typ] || FTYP.fenWG;
+    var A = w.mode === 'masse' ? num(w.stk,0)*num(w.b,0)*num(w.h,0) : num(w.a,0);
+    var u = num(w.u,0), f = num(w.f,1);
+    return {ref:w, nm:w.nm || (t.nm+' '+w.orient), typ:t, orient:w.orient, A:A, u:u, f:f, L:A*u*f,
+            g:num(w.g,0.6), ff:num(w.ff,0.7), fs:num(w.fs,0.85),
+            verstoss: u > 0 && u > t.umax + 1e-9};
+  });
+
+  var Aop = sum(bt,'A'), Afe = sum(fe,'A'), A = Aop + Afe;
+  var Lop = sum(bt,'L'), Lfe = sum(fe,'L'), Lbt = Lop + Lfe;
+  var LWB = S.wb.mode === 'pauschal' ? 0.025*bgf : num(S.wb.wert, 0);
+  var LT  = Lbt + LWB;
+  var lc  = A > 0 ? V/A : 0;
+  var um  = A > 0 ? Lbt/A : 0;          /* mittlerer U-Wert ohne Wärmebrücken */
+  var umL = A > 0 ? LT/A  : 0;          /* LT/A, inkl. Wärmebrücken */
+  var VL  = 0.8*V;
+  var BF  = 0.8*bgf;
+  var Cw  = num(S.geo.cwirk, 60);
+
+  /* --- Ein Bilanzdurchgang --- */
+  function lauf(kl, mitWRG){
+    var n = num(S.lft.n, 0.40);
+    var wrg = (mitWRG && S.lft.wrgAktiv) ? clamp(num(S.lft.wrg,0)/100, 0, 0.95) : 0;
+    var nEff = n*(1 - wrg);
+    var LV = 0.34*nEff*VL;
+    var hgt = num(kl.hgt,0), ht = num(kl.ht,0);
+    var QT = 0.024*LT*hgt, QV = 0.024*LV*hgt, Ql = QT + QV;
+    var qi = num(S.nutz.qi, 3.75);
+    var Qi = 0.024*qi*BF*ht;
+    var Qs = 0, sdet = [];
+    for (var i=0;i<fe.length;i++){
+      var w = fe[i], I = num(kl.rad[w.orient], 0);
+      var q = I*w.A*w.ff*w.g*w.fs*0.9;
+      Qs += q; sdet.push({nm:w.nm, orient:w.orient, I:I, A:w.A, ff:w.ff, g:w.g, fs:w.fs, q:q});
+    }
+    var Qg = Qi + Qs;
+    var gamma = Ql > 0 ? Qg/Ql : 0;
+    var tau = (LT + LV) > 0 ? (Cw*bgf)/(LT + LV) : 0;
+    var aE = 1 + tau/16;
+    var eta = (Ql <= 0 || Qg <= 0) ? 0 : ausnutzung(gamma, aE);
+    var Qh = Math.max(0, Ql - eta*Qg);
+    return {LV:LV, n:n, nEff:nEff, wrg:wrg, hgt:hgt, ht:ht, QT:QT, QV:QV, Ql:Ql,
+            qi:qi, Qi:Qi, Qs:Qs, Qg:Qg, sdet:sdet, gamma:gamma, tau:tau, a:aE, eta:eta,
+            Qh:Qh, HWB: bgf > 0 ? Qh/bgf : 0};
+  }
+
+  var sk  = lauf(S.klima.sk, true);    /* Standortklima — Seite 1, Effizienzklasse */
+  var rk  = lauf(S.klima.rk, true);    /* Referenzklima  — Vergleichsrechnung */
+  var ref = lauf(S.klima.rk, false);   /* Referenzklima ohne WRG — Nachweisgröße */
+
+  /* --- Haustechnik: HWB → HEB → EEB → PEB / CO₂ --- */
+  function anlage(HWB){
+    var wwwb  = num(S.nutz.wwwb, 12.5);
+    var solar = clamp(num(S.anl.solarWW, 0)/100, 0, 0.9);
+    var wwRest = wwwb*(1 - solar);
+    var nutzw = HWB + wwRest;
+    var vl = num(S.anl.verluste, 12)/100;
+    var abErz = nutzw*(1 + vl);
+    var e = ERZ[S.anl.erz] || ERZ.wpLuft;
+    var eff  = S.anl.erz === 'frei' ? num(S.anl.eff, 1) : e.eff;
+    var trK  = S.anl.erz === 'frei' ? S.anl.tr : e.tr;
+    var tr   = FAC[trK] || FAC.el;
+    var hilf = S.anl.hilf === '' || S.anl.hilf === null ? e.hilf : num(S.anl.hilf, e.hilf);
+    var eebErz = eff > 0 ? abErz/eff : 0;
+
+    var strom = hilf + (trK === 'el' ? eebErz : 0);
+    var brenn = trK === 'el' ? 0 : eebErz;
+    var hh = S.anl.haushaltInkl ? num(S.anl.haushalt, 0) : 0;
+    strom += hh;
+
+    /* PV: anrechenbarer Eigenverbrauch, gedeckelt nach RL 6:2025 */
+    var pvErtrag = num(S.anl.pvKwp,0)*num(S.anl.pvErtrag,950);
+    var quote = S.anl.pvSpeicher ? 0.70 : 0.60;
+    var pvSpez = bgf > 0 ? (pvErtrag*quote)/bgf : 0;
+    var pvAnr = Math.min(pvSpez, strom);
+    strom -= pvAnr;
+
+    var eeb   = strom + brenn;
+    var peb   = strom*FAC.el.pe + brenn*tr.pe;
+    var pebne = strom*FAC.el.ne + brenn*tr.ne;
+    var co2   = strom*FAC.el.co + brenn*tr.co;
+    var heb   = eebErz + hilf;
+    var hteb  = heb - HWB - wwwb;
+
+    return {wwwb:wwwb, solar:solar, wwRest:wwRest, nutzw:nutzw, vl:vl, abErz:abErz,
+            eff:eff, trK:trK, tr:tr, hilf:hilf, eebErz:eebErz, strom:strom, brenn:brenn,
+            hh:hh, pvSpez:pvSpez, pvAnr:pvAnr, pvQuote:quote, eeb:eeb, peb:peb,
+            pebne:pebne, co2:co2, heb:heb, hteb:hteb, erzNm:e.nm};
+  }
+  var anlSK = anlage(sk.HWB), anlRK = anlage(rk.HWB);
+
+  /* --- Nachweis --- */
+  var fall = S.meta.anlass === 'ren' ? 'ren' : 'neu';
+  var reqs = REQ.map(function(r){
+    var p = r[fall], zul = lc > 0 ? p[0]*(1 + p[1]/lc) : 0;
+    return {n:r.n, C:p[0], x:p[1], zul:zul, ok: lc > 0 && ref.HWB <= zul, std:!!r.std};
+  });
+  var haupt = reqs[0];
+
+  return {bgf:bgf, V:V, A:A, Aop:Aop, Afe:Afe, lc:lc, um:um, umL:umL, VL:VL, BF:BF, Cw:Cw,
+          bt:bt, fe:fe, Lop:Lop, Lfe:Lfe, Lbt:Lbt, LWB:LWB, LT:LT,
+          sk:sk, rk:rk, ref:ref, anlSK:anlSK, anlRK:anlRK,
+          reqs:reqs, haupt:haupt, fall:fall,
+          klasse:klasseVon(sk.HWB)};
+}
+
+function klasseVon(h){
+  if (!isFinite(h) || h <= 0) return null;
+  for (var i=0;i<CLS.length;i++) if (h <= CLS[i].max) return CLS[i];
+  return CLS[CLS.length-1];
+}
+
+/* ============================================================
+   5 — Plausibilitätsprüfung
+   ============================================================ */
+function pruefe(R){
+  var out = [];
+  function add(lvl, t){ out.push({lvl:lvl, t:t}); }
+
+  if (R.bgf <= 0) add('bd','<b>BGF fehlt.</b> Ohne konditionierte Brutto-Grundfläche gibt es keine Kennzahl in kWh/m²a.');
+  if (R.V <= 0)   add('bd','<b>Brutto-Volumen fehlt.</b> Ohne V kein ℓc und damit kein Anforderungswert.');
+  if (R.A <= 0)   add('bd','<b>Hüllfläche ist 0.</b> Bauteile mit Flächen erfassen — A wird daraus gebildet, nicht separat eingegeben.');
+
+  if (R.bgf > 0 && R.V > 0){
+    var h = R.V/R.bgf;
+    if (h < 2.0 || h > 4.5) add('wr','<b>V / BGF = '+fmt(h,2)+' m.</b> Das entspricht der mittleren Bruttogeschoßhöhe und liegt außerhalb 2,0–4,5 m. BGF oder V prüfen.');
+  }
+  if (R.A > 0 && R.bgf > 0){
+    var ab = R.A/R.bgf;
+    if (ab < 1.2 || ab > 3.4) add('wr','<b>A / BGF = '+fmt(ab,2)+'.</b> Üblich sind 1,5–3,0. Fehlt ein Bauteil, oder ist eine Fläche doppelt erfasst?');
+  }
+  if (R.lc > 0){
+    if (R.lc < 0.7 || R.lc > 3.6) add('wr','<b>ℓc = '+fmt(R.lc,2)+' m</b> liegt außerhalb des üblichen Bereichs (EFH 1,0–1,5 · Reihenhaus 1,4–1,9 · MFH 1,8–3,0).');
+    else add('ok','ℓc = '+fmt(R.lc,2)+' m — plausibel für die Gebäudetype.');
+  }
+  if (R.um > 0){
+    if (R.um > 1.8) add('wr','<b>Mittlerer U-Wert '+fmt(R.um,3)+' W/m²K.</b> Selbst unsanierter Altbau liegt bei 0,9–1,6. U-Werte prüfen.');
+    else if (R.um < 0.08) add('wr','<b>Mittlerer U-Wert '+fmt(R.um,3)+' W/m²K.</b> Das unterbietet Passivhausniveau — Eingabe prüfen.');
+    else add('ok','Mittlerer U-Wert '+fmt(R.um,3)+' W/m²K (Neubau 0,15–0,30 · Altbau 0,9–1,6).');
+  }
+  if (R.bgf > 0 && R.Afe > 0){
+    var fa = R.Afe/R.bgf*100;
+    if (fa < 8 || fa > 25) add('wr','<b>Fensterflächenanteil '+fmt(fa,1)+' % der BGF.</b> Im Wohnbau üblich sind 12–18 %.');
+    else add('ok','Fensterflächenanteil '+fmt(fa,1)+' % der BGF — plausibel.');
+  }
+
+  var v = R.bt.filter(function(b){return b.verstoss;}).concat(R.fe.filter(function(w){return w.verstoss;}));
+  if (v.length){
+    add('bd','<b>'+v.length+' Bauteil'+(v.length>1?'e überschreiten':' überschreitet')+' den zulässigen U-Wert:</b> '+
+        v.map(function(x){ return esc(x.nm)+' ('+fmt(x.u,3)+' &gt; '+fmt(x.typ.umax,2)+')'; }).join(', ')+
+        '. Die U-Wert-Tabelle gilt zusätzlich zu jedem Nachweisweg.');
+  } else if (R.bt.length + R.fe.length > 0){
+    add('ok','Alle Bauteile halten die Umax-Tabelle der OIB RL 6 ein.');
+  }
+
+  if (R.anlSK.pvSpez > 0 && R.anlSK.pvSpez > R.anlSK.strom + R.anlSK.pvAnr - 1e-9)
+    add('wr','<b>Der anrechenbare PV-Ertrag ('+fmt(R.anlSK.pvSpez,1)+' kWh/m²a) übersteigt den Strombedarf</b> und wird auf '+fmt(R.anlSK.pvAnr,1)+' gekappt. Ein EEB nahe null ist hier ein Artefakt der Jahresbilanz: die Anlage erzeugt im Sommer, geheizt wird im Winter. Eine belastbare Rechnung stellt Erzeugung und Bedarf monatlich gegenüber.');
+  if (R.sk.gamma > 1) add('in','<b>γ = '+fmt(R.sk.gamma,2)+' &gt; 1:</b> Die Gewinne übersteigen die Verluste. Der Ausnutzungsgrad fällt entsprechend stark ab — bei so einem Verhältnis ist die Monatsbilanz der Jahresbilanz klar überlegen.');
+  if (S.lft.wrgAktiv) add('in','<b>WRG angesetzt.</b> Für die Anrechnung braucht es den Luftdichtheitsnachweis (n50 aus der Blower-Door-Messung). Der HWB<sub>Ref</sub> für den Nachweis wird hier korrekt <b>ohne</b> WRG gerechnet.');
+  if (R.LWB > 0 && S.wb.mode === 'pauschal' && R.lc > 0 && R.lc < 1.0)
+    add('in','<b>Wärmebrücken pauschal bei ℓc = '+fmt(R.lc,2)+' m.</b> Bei zerklüfteter Geometrie ist der detaillierte Nachweis Σ ψ·ℓ ehrlicher.');
+
+  if (R.lc > 0 && R.ref.HWB > 0){
+    if (R.haupt.ok) add('ok','HWB<sub>Ref,RK</sub> = '+fmt(R.ref.HWB,1)+' ≤ '+fmt(R.haupt.zul,1)+' kWh/m²a — '+esc(R.haupt.n)+' erfüllt.');
+    else add('bd','<b>HWB<sub>Ref,RK</sub> = '+fmt(R.ref.HWB,1)+' &gt; '+fmt(R.haupt.zul,1)+' kWh/m²a</b> — '+esc(R.haupt.n)+' nicht erfüllt.');
+  }
+  return out;
+}
+
+/* ============================================================
+   6 — Eingabe-Oberfläche
+   ============================================================ */
+var R = null;                     /* letztes Rechenergebnis */
+var refs = {};                    /* Knoten, die bei jeder Eingabe aktualisiert werden */
+
+function opt(map, cur, keyNm){
+  var s = '';
+  for (var k in map){ if (!Object.prototype.hasOwnProperty.call(map,k)) continue;
+    s += '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+esc(keyNm?map[k][keyNm]:map[k].nm)+'</option>'; }
+  return s;
+}
+function optArr(arr, cur){
+  return arr.map(function(o){ return '<option value="'+esc(o[0])+'"'+(o[0]===cur?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('');
+}
+function fld(label, unit, id, val, ph){
+  return '<label class="f" for="'+id+'">'+label+(unit?' <span class="u">'+unit+'</span>':'')+
+         '<input type="text" inputmode="decimal" id="'+id+'" value="'+esc(val)+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+'></label>';
+}
+function sel(label, id, html){
+  return '<label class="f" for="'+id+'">'+label+'<select id="'+id+'">'+html+'</select></label>';
+}
+
+/* Bindet ein Feld an einen Zustandspfad: bind('#id', obj, 'key') */
+function bind(id, obj, key, after){
+  var n = el(id); if (!n) return;
+  var ev = n.tagName === 'SELECT' ? 'change' : 'input';
+  n.addEventListener(ev, function(){
+    obj[key] = n.type === 'checkbox' ? n.checked : n.value;
+    if (after) after();
+    tick();
+  });
+}
+
+function baueEingabe(){
+  var K = S.klima, H = [];
+
+  /* --- 01 Projekt --- */
+  H.push(karte(1,'Projekt und Anlass','',
+    '<div class="fields two">'+
+      '<label class="f" for="mName">Bezeichnung<input type="text" id="mName" value="'+esc(S.meta.name)+'"></label>'+
+      '<label class="f" for="mAdr">Adresse<input type="text" id="mAdr" value="'+esc(S.meta.adresse)+'"></label>'+
+      '<label class="f" for="mKg">Katastralgemeinde<input type="text" id="mKg" value="'+esc(S.meta.kg)+'"></label>'+
+      '<label class="f" for="mGst">Grundstücksnummer<input type="text" id="mGst" value="'+esc(S.meta.gstnr)+'"></label>'+
+      '<label class="f" for="mBj">Baujahr <span class="u">Baubewilligung</span><input type="text" id="mBj" value="'+esc(S.meta.baujahr)+'"></label>'+
+      '<label class="f" for="mErs">Ersteller<input type="text" id="mErs" value="'+esc(S.meta.ersteller)+'"></label>'+
+      sel('Gebäudekategorie','mKat', opt(KAT, S.meta.kat))+
+      sel('Anlass des Nachweises','mAnl', '<option value="neu"'+(S.meta.anlass==='neu'?' selected':'')+'>Neubau</option><option value="ren"'+(S.meta.anlass==='ren'?' selected':'')+'>Größere Renovierung</option>')+
+    '</div>'+
+    '<div class="note">Die Gebäudekategorie setzt das <b>Nutzungsprofil</b> (innere Lasten, Warmwasserbedarf, Luftwechsel) in Schritt 08. Die Werte sind nach ÖNORM B 8110-5 normiert und nicht frei wählbar — deshalb ist der Ausweis ein Bedarfs- und kein Verbrauchsausweis.</div>'));
+
+  /* --- 02 Klima --- */
+  var radRows = ORIENT.map(function(o){
+    return '<label class="f" for="rsk'+o+'">'+o+' <span class="u">kWh/m²</span><input type="text" inputmode="decimal" id="rsk'+o+'" value="'+esc(K.sk.rad[o])+'"></label>';
+  }).join('');
+  H.push(karte(2,'Klimadaten','Standort- und Referenzklima',
+    '<p class="lead">Jeder Ausweis rechnet dasselbe Gebäude zweimal: im <b>Standortklima</b> für die Effizienzklasse auf Seite 1 und im <b>Referenzklima</b> für den behördlichen Nachweis.</p>'+
+    '<div class="fields">'+
+      fld('Ort / Gemeinde','','mOrt',S.meta.ort)+
+      fld('Seehöhe','m','mSh',S.meta.seehoehe)+
+      '<label class="f">&nbsp;<button class="btn ghost" id="btnHgt" type="button">HGT aus Seehöhe schätzen</button></label>'+
+    '</div>'+
+    '<div class="fields" style="margin-top:11px">'+
+      fld('HGT Standortklima','Kd · 20/12','kSkH',K.sk.hgt)+
+      fld('Heiztage Standortklima','d','kSkT',K.sk.ht)+
+      fld('HGT Referenzklima','Kd · 20/12','kRkH',K.rk.hgt)+
+      fld('Heiztage Referenzklima','d','kRkT',K.rk.ht)+
+    '</div>'+
+    '<h4 style="font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:15px 0 8px">Strahlungsangebot der Heizperiode je Orientierung</h4>'+
+    '<div class="fields">'+radRows+'</div>'+
+    '<label class="cb" style="margin-top:10px"><input type="checkbox" id="kSame"'+(gleichesRad()?' checked':'')+'> Referenzklima verwendet dieselben Strahlungswerte</label>'+
+    '<div class="note wrn"><b>Vor dem realen Nachweis prüfen.</b> Die Voreinstellungen sind Richtwerte für den Alpennordrand — HGT 3.500 Kd / 215 d entsprechen rund 600 m Seehöhe in Tirol. Die verbindlichen Klimadatensätze stehen in der ÖNORM B 8110-5 bzw. kommen aus der zertifizierten Software. Ein falsch übernommener Standort ist in Tirol 20–35 % Abweichung beim HWB.</div>'));
+
+  /* --- 03 Geometrie --- */
+  H.push(karte(3,'Geometrie','BGF, Volumen, Speichermasse',
+    '<div class="fields">'+
+      fld('Konditionierte BGF','m²','gBgf',S.geo.bgf)+
+      fld('Brutto-Volumen V','m³','gV',S.geo.v)+
+      sel('Bauweise <span class="u">C<sub>wirk</sub></span>','gBauw', opt(BAUW, S.geo.bauw))+
+      fld('C<sub>wirk</sub>','Wh/m²K','gCw',S.geo.cwirk)+
+    '</div>'+
+    '<div class="note"><b>Die Hüllfläche A wird nicht eingegeben</b>, sondern aus der Bauteil- und Fensterliste gebildet. Damit kann A nicht von der Bauteilliste abweichen — der häufigste Geometriefehler ist so ausgeschlossen. Daraus folgen ℓ<sub>c</sub> = V / A und die Bezugsfläche BF = 0,8 · BGF.</div>'));
+
+  /* --- 04 Opake Bauteile --- */
+  H.push(karte(4,'Opake Bauteile','<span id="hdBt"></span>',
+    '<div class="lhead op"><span>Bezeichnung</span><span>Bauteiltyp</span><span>Fläche m²</span><span>U W/m²K</span><span>f</span><span>A·U·f</span><span></span></div>'+
+    '<div class="list" id="btList"></div>'+
+    '<div class="rowbtns"><button class="btn" id="btAdd" type="button">+ Bauteil</button>'+
+    '<span style="font-size:11.5px;color:var(--ink-3);align-self:center">U direkt eingeben oder auf „Schichten“ stellen und den Aufbau aufbauen</span></div>'));
+
+  /* --- 05 Fenster --- */
+  H.push(karte(5,'Fenster und transparente Bauteile','<span id="hdFe"></span>',
+    '<div class="lhead win"><span>Bezeichnung</span><span>Typ</span><span>Orient.</span><span>Stk</span><span>b [m]</span><span>h [m]</span><span>U<sub>w</sub></span><span>g / F<sub>S</sub></span><span>A · A·U</span><span></span></div>'+
+    '<div class="list" id="feList"></div>'+
+    '<div class="rowbtns"><button class="btn" id="feAdd" type="button">+ Fenster</button></div>'+
+    '<div class="note"><b>U<sub>w</sub>, nicht U<sub>g</sub>.</b> Der Fenster-Gesamtwert inklusive Rahmen und Randverbund — der Rahmen ist der schlechte Teil. F<sub>F</sub> ist der Glasanteil (≈ 0,70), g<sub>⊥</sub> der Gesamtenergiedurchlassgrad (3-Scheiben 0,50–0,62), F<sub>S</sub> die Verschattung durch Horizont, Nachbarbebauung, Vordach und Laibung (0,7–0,9).</div>'));
+
+  /* --- 06 Wärmebrücken --- */
+  H.push(karte(6,'Wärmebrücken','<span id="hdWb"></span>',
+    '<div class="fields">'+
+      sel('Ansatz','wbMode','<option value="pauschal"'+(S.wb.mode==='pauschal'?' selected':'')+'>pauschal — 2,5 W/K je 100 m² BGF</option><option value="detail"'+(S.wb.mode==='detail'?' selected':'')+'>detailliert — Σ ψ · ℓ</option>')+
+      fld('L<sub>WB</sub> detailliert','W/K','wbWert',S.wb.wert,'Σ ψ·ℓ')+
+    '</div>'));
+
+  /* --- 07 Lüftung --- */
+  H.push(karte(7,'Lüftung','<span id="hdLft"></span>',
+    '<div class="fields">'+
+      fld('Luftwechsel n','1/h','lN',S.lft.n)+
+      fld('Wärmerückgewinnung η<sub>WRG</sub>','%','lWrg',S.lft.wrg)+
+    '</div>'+
+    '<label class="cb" style="margin-top:10px"><input type="checkbox" id="lAktiv"'+(S.lft.wrgAktiv?' checked':'')+'> Lüftungsanlage mit Wärmerückgewinnung anrechnen</label>'+
+    '<div class="note">Angerechnet wird n<sub>eff</sub> = n · (1 − η<sub>WRG</sub>). Der <b>HWB<sub>Ref,RK</sub></b> für den Nachweis wird davon unabhängig immer ohne WRG gerechnet — das ist genau der Unterschied zwischen HWB und HWB<sub>Ref</sub>.</div>'));
+
+  /* --- 08 Nutzungsprofil --- */
+  H.push(karte(8,'Nutzungsprofil','innere Lasten und Warmwasser',
+    '<div class="fields">'+
+      fld('Innere Lasten q<sub>i</sub>','W/m² BF','nQi',S.nutz.qi)+
+      fld('Warmwasserwärmebedarf','kWh/m²a','nWw',S.nutz.wwwb)+
+    '</div>'+
+    '<div class="note">Seit ÖNORM H 5056-1:2019 wird der WWWB personenbezogen ermittelt: rund <b>7–9</b> bei großen Einfamilienhäusern, <b>12–14</b> bei kleinen Wohnungen. Der Wert wird auf die BGF bezogen, die inneren Lasten dagegen auf die Bezugsfläche BF = 0,8 · BGF.</div>'));
+
+  /* --- 09 Haustechnik --- */
+  H.push(karte(9,'Wärmebereitstellung','<span id="hdAnl"></span>',
+    '<div class="fields two">'+
+      sel('Wärmeerzeuger','aErz', opt(ERZ, S.anl.erz))+
+      fld('Systemverluste Abgabe/Verteilung/Speicher','%','aVl',S.anl.verluste)+
+      fld('Nutzungsgrad η bzw. JAZ <span class="u">frei</span>','','aEff',S.anl.eff,'nur bei „frei“')+
+      sel('Energieträger <span class="u">frei</span>','aTr', opt(FAC, S.anl.tr))+
+      fld('Hilfsenergie','kWh/m²a','aHilf',S.anl.hilf,'Vorgabe des Erzeugers')+
+      fld('Solarthermie deckt vom WW','%','aSol',S.anl.solarWW)+
+    '</div>'+
+    '<div class="fields two" style="margin-top:11px">'+
+      fld('PV-Anlage','kW<sub>p</sub>','aPv',S.anl.pvKwp)+
+      fld('PV-Ertrag','kWh/kW<sub>p</sub>a','aPvE',S.anl.pvErtrag)+
+      fld('Haushaltsstrom','kWh/m²a','aHh',S.anl.haushalt)+
+    '</div>'+
+    '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:10px">'+
+      '<label class="cb"><input type="checkbox" id="aPvS"'+(S.anl.pvSpeicher?' checked':'')+'> PV mit Batteriespeicher</label>'+
+      '<label class="cb"><input type="checkbox" id="aHhI"'+(S.anl.haushaltInkl?' checked':'')+'> Haushaltsstrom im EEB ausweisen</label>'+
+    '</div>'+
+    '<div class="note"><b>Getrennt bewertet.</b> Die Hilfsenergie ist immer Strom, auch wenn der Kessel mit Öl läuft — Primärenergie und CO₂ werden hier deshalb je Energieträger einzeln bewertet und erst dann summiert. Der anrechenbare PV-Eigenverbrauch ist nach RL 6:2025 auf '+
+    '60 % (ohne Speicher) bzw. 70 % (mit Speicher) des Jahresertrags gedeckelt.</div>'));
+
+  el('inputCol').innerHTML = H.join('');
+
+  /* --- Bindungen --- */
+  bind('mName',S.meta,'name'); bind('mAdr',S.meta,'adresse'); bind('mKg',S.meta,'kg');
+  bind('mGst',S.meta,'gstnr'); bind('mBj',S.meta,'baujahr'); bind('mErs',S.meta,'ersteller');
+  bind('mOrt',S.meta,'ort'); bind('mSh',S.meta,'seehoehe'); bind('mAnl',S.meta,'anlass');
+  bind('mKat',S.meta,'kat', function(){
+    var k = KAT[S.meta.kat] || KAT.wohn;
+    S.nutz.qi = k.qi; S.nutz.wwwb = k.wwwb; S.lft.n = k.n;
+    el('nQi').value = k.qi; el('nWw').value = k.wwwb; el('lN').value = k.n;
+  });
+  bind('kSkH',S.klima.sk,'hgt'); bind('kSkT',S.klima.sk,'ht');
+  bind('kRkH',S.klima.rk,'hgt'); bind('kRkT',S.klima.rk,'ht');
+  ORIENT.forEach(function(o){
+    var n = el('rsk'+o); if (!n) return;
+    n.addEventListener('input', function(){
+      S.klima.sk.rad[o] = n.value;
+      if (el('kSame').checked) S.klima.rk.rad[o] = n.value;
+      tick();
+    });
+  });
+  el('kSame').addEventListener('change', function(){
+    if (this.checked) S.klima.rk.rad = copy(S.klima.sk.rad);
+    tick();
+  });
+  el('btnHgt').addEventListener('click', function(){
+    var h = num(S.meta.seehoehe, NaN);
+    if (!isFinite(h)){ el('mSh').focus(); return; }
+    /* Näherung: 3.500 Kd / 215 d bei 600 m, +138 Kd und +2,5 d je 100 m */
+    S.klima.sk.hgt = Math.round((3500 + (h - 600)*1.38)/10)*10;
+    S.klima.sk.ht  = Math.round(clamp(215 + (h - 600)*0.025, 150, 300));
+    el('kSkH').value = S.klima.sk.hgt; el('kSkT').value = S.klima.sk.ht;
+    tick();
+  });
+  bind('gBgf',S.geo,'bgf'); bind('gV',S.geo,'v'); bind('gCw',S.geo,'cwirk');
+  bind('gBauw',S.geo,'bauw', function(){
+    S.geo.cwirk = (BAUW[S.geo.bauw]||BAUW.mittel).c; el('gCw').value = S.geo.cwirk;
+  });
+  bind('wbMode',S.wb,'mode'); bind('wbWert',S.wb,'wert');
+  bind('lN',S.lft,'n'); bind('lWrg',S.lft,'wrg'); bind('lAktiv',S.lft,'wrgAktiv');
+  bind('nQi',S.nutz,'qi'); bind('nWw',S.nutz,'wwwb');
+  bind('aErz',S.anl,'erz', function(){
+    var e = ERZ[S.anl.erz] || ERZ.wpLuft;
+    if (S.anl.erz !== 'frei'){ S.anl.hilf = ''; el('aHilf').value = ''; }
+    else { S.anl.eff = S.anl.eff || e.eff; el('aEff').value = S.anl.eff; }
+  });
+  bind('aVl',S.anl,'verluste'); bind('aEff',S.anl,'eff'); bind('aTr',S.anl,'tr');
+  bind('aHilf',S.anl,'hilf'); bind('aSol',S.anl,'solarWW');
+  bind('aPv',S.anl,'pvKwp'); bind('aPvE',S.anl,'pvErtrag'); bind('aPvS',S.anl,'pvSpeicher');
+  bind('aHh',S.anl,'haushalt'); bind('aHhI',S.anl,'haushaltInkl');
+
+  el('btAdd').addEventListener('click', function(){ S.bauteile.push(leerBauteil('awAussen')); zeichneBt(); tick(); });
+  el('feAdd').addEventListener('click', function(){ S.fenster.push(leerFenster('S')); zeichneFe(); tick(); });
+
+  zeichneBt(); zeichneFe();
+}
+function gleichesRad(){
+  for (var i=0;i<ORIENT.length;i++) if (String(S.klima.sk.rad[ORIENT[i]]) !== String(S.klima.rk.rad[ORIENT[i]])) return false;
+  return true;
+}
+function karte(nr, titel, hint, inner){
+  return '<details class="card"'+(nr<=5?' open':'')+'><summary><span class="step">'+padL(nr,2).replace(' ','0')+
+         '</span><h3>'+titel+'</h3><span class="hint">'+hint+'</span></summary><div class="body">'+inner+'</div></details>';
+}
+
+/* --- Bauteilzeilen --- */
+function zeichneBt(){
+  var box = el('btList'); box.innerHTML = '';
+  S.bauteile.forEach(function(b, i){
+    var wrap = document.createElement('div'); wrap.className = 'item';
+    wrap.innerHTML =
+      '<div class="item-hd">'+
+        '<input type="text" value="'+esc(b.nm)+'" placeholder="'+esc((TYP[b.typ]||TYP.awAussen).nm)+'" aria-label="Bezeichnung" data-k="nm">'+
+        '<select aria-label="Bauteiltyp" data-k="typ">'+opt(TYP, b.typ)+'</select>'+
+        '<input type="text" inputmode="decimal" value="'+esc(b.a)+'" aria-label="Fläche m²" data-k="a">'+
+        '<input type="text" inputmode="decimal" value="'+esc(b.u)+'" aria-label="U-Wert" data-k="u"'+(b.mode==='schichten'?' disabled':'')+'>'+
+        '<input type="text" inputmode="decimal" value="'+esc(b.f)+'" aria-label="Temperaturkorrekturfaktor f" data-k="f">'+
+        '<span class="res" data-out="bt'+b.id+'">–</span>'+
+        '<button class="x" type="button" aria-label="Bauteil entfernen" data-act="del">×</button>'+
+      '</div>'+
+      '<div class="layers" data-lay></div>';
+
+    var hd = wrap.querySelector('.item-hd');
+    hd.querySelectorAll('[data-k]').forEach(function(n){
+      var k = n.getAttribute('data-k');
+      n.addEventListener(n.tagName==='SELECT'?'change':'input', function(){
+        b[k] = n.value;
+        if (k === 'typ'){ b.f = (TYP[b.typ]||TYP.awAussen).f; zeichneBt(); }
+        tick();
+      });
+    });
+    hd.querySelector('[data-act=del]').addEventListener('click', function(){
+      S.bauteile.splice(i,1); zeichneBt(); tick();
+    });
+
+    var lay = wrap.querySelector('[data-lay]');
+    lay.appendChild(schichtKopf(b));
+    if (b.mode === 'schichten'){
+      b.sch.forEach(function(s, j){ lay.appendChild(schichtZeile(b, s, j)); });
+      var add = document.createElement('button');
+      add.type='button'; add.className='btn ghost'; add.textContent='+ Schicht';
+      add.addEventListener('click', function(){ b.sch.push({id:nid(),nm:'',d:'',lam:''}); zeichneBt(); tick(); });
+      lay.appendChild(add);
+      var outR = document.createElement('div');
+      outR.className='res'; outR.style.textAlign='left'; outR.style.marginTop='9px';
+      outR.setAttribute('data-out','sch'+b.id);
+      lay.appendChild(outR);
+    }
+
+    box.appendChild(wrap);
+  });
+}
+function schichtKopf(b){
+  var d = document.createElement('div'); d.className='lrow';
+  d.innerHTML = '<select data-mode><option value="direkt"'+(b.mode==='direkt'?' selected':'')+'>U direkt eingeben</option>'+
+                '<option value="schichten"'+(b.mode==='schichten'?' selected':'')+'>U aus Schichtaufbau</option></select>'+
+                '<span></span><span></span><span></span><span></span>';
+  d.querySelector('[data-mode]').addEventListener('change', function(){
+    b.mode = this.value; zeichneBt(); tick();
+  });
+  return d;
+}
+function schichtZeile(b, s, j){
+  var d = document.createElement('div'); d.className='lrow';
+  d.innerHTML =
+    '<input type="text" value="'+esc(s.nm)+'" placeholder="Schicht" aria-label="Schichtbezeichnung" data-k="nm">'+
+    '<input type="text" inputmode="decimal" value="'+esc(s.d)+'" placeholder="cm" aria-label="Dicke in cm" data-k="d">'+
+    '<input type="text" inputmode="decimal" value="'+esc(s.lam)+'" placeholder="λ" aria-label="Lambda" data-k="lam">'+
+    '<select data-mat aria-label="Material wählen"><option value="">Material …</option>'+
+      MAT.map(function(m){ return '<option value="'+m[1]+'">'+esc(m[0])+' · '+fmt(m[1],3)+'</option>'; }).join('')+
+    '</select>'+
+    '<button class="x" type="button" aria-label="Schicht entfernen">×</button>';
+  d.querySelectorAll('[data-k]').forEach(function(n){
+    n.addEventListener('input', function(){ s[n.getAttribute('data-k')] = n.value; tick(); });
+  });
+  d.querySelector('[data-mat]').addEventListener('change', function(){
+    if (!this.value) return;
+    s.lam = this.value;
+    if (!s.nm) s.nm = this.options[this.selectedIndex].text.split(' · ')[0];
+    zeichneBt(); tick();
+  });
+  d.querySelector('.x').addEventListener('click', function(){ b.sch.splice(j,1); zeichneBt(); tick(); });
+  return d;
+}
+
+/* --- Fensterzeilen --- */
+function zeichneFe(){
+  var box = el('feList'); box.innerHTML = '';
+  S.fenster.forEach(function(w, i){
+    var wrap = document.createElement('div'); wrap.className = 'item';
+    wrap.innerHTML =
+      '<div class="item-hd win">'+
+        '<input type="text" value="'+esc(w.nm)+'" placeholder="Fenster '+esc(w.orient)+'" aria-label="Bezeichnung" data-k="nm">'+
+        '<select aria-label="Typ" data-k="typ">'+opt(FTYP, w.typ)+'</select>'+
+        '<select aria-label="Orientierung" data-k="orient">'+ORIENT.map(function(o){return '<option'+(o===w.orient?' selected':'')+'>'+o+'</option>';}).join('')+'</select>'+
+        '<input type="text" inputmode="decimal" value="'+esc(w.stk)+'" aria-label="Stück" data-k="stk"'+(w.mode==='direkt'?' disabled':'')+'>'+
+        '<input type="text" inputmode="decimal" value="'+esc(w.b)+'" aria-label="Breite m" data-k="b"'+(w.mode==='direkt'?' disabled':'')+'>'+
+        '<input type="text" inputmode="decimal" value="'+esc(w.h)+'" aria-label="Höhe m" data-k="h"'+(w.mode==='direkt'?' disabled':'')+'>'+
+        '<input type="text" inputmode="decimal" value="'+esc(w.u)+'" aria-label="U-Wert" data-k="u">'+
+        '<input type="text" inputmode="decimal" value="'+esc(w.g)+'" aria-label="g-Wert" data-k="g">'+
+        '<span class="res" data-out="fe'+w.id+'">–</span>'+
+        '<button class="x" type="button" aria-label="Fenster entfernen" data-act="del">×</button>'+
+      '</div>'+
+      '<div class="layers">'+
+        '<div class="lrow" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">'+
+          '<select data-mode><option value="masse"'+(w.mode==='masse'?' selected':'')+'>Fläche aus Stk × b × h</option>'+
+          '<option value="direkt"'+(w.mode==='direkt'?' selected':'')+'>Fläche direkt eingeben</option></select>'+
+          '<label class="f">Fläche <span class="u">m²</span><input type="text" inputmode="decimal" value="'+esc(w.a)+'" data-k="a"'+(w.mode==='masse'?' disabled':'')+'></label>'+
+          '<label class="f">Glasanteil F<sub>F</sub><input type="text" inputmode="decimal" value="'+esc(w.ff)+'" data-k="ff"></label>'+
+          '<label class="f">Verschattung F<sub>S</sub><input type="text" inputmode="decimal" value="'+esc(w.fs)+'" data-k="fs"></label>'+
+          '<label class="f">f<input type="text" inputmode="decimal" value="'+esc(w.f)+'" data-k="f"></label>'+
+        '</div>'+
+        '<div class="res" style="text-align:left" data-out="fes'+w.id+'"></div>'+
+      '</div>';
+
+    wrap.querySelectorAll('[data-k]').forEach(function(n){
+      var k = n.getAttribute('data-k');
+      n.addEventListener(n.tagName==='SELECT'?'change':'input', function(){ w[k] = n.value; tick(); });
+    });
+    wrap.querySelector('[data-mode]').addEventListener('change', function(){ w.mode = this.value; zeichneFe(); tick(); });
+    wrap.querySelector('[data-act=del]').addEventListener('click', function(){ S.fenster.splice(i,1); zeichneFe(); tick(); });
+    box.appendChild(wrap);
+  });
+}
+
+/* ============================================================
+   7 — Ausgabe: Messleiste, Schiene, Zeilenwerte
+   ============================================================ */
+function tick(){
+  R = rechne();
+  malMessleiste();
+  malZeilen();
+  malSchiene();
+  malRechenweg();
+  malAusweis();
+  speichern();
+}
+
+function malMessleiste(){
+  var k = R.klasse;
+  el('kpis').innerHTML = [
+    kpi('HWB Standortklima', fmt(R.sk.HWB,1), 'kWh/m²a', true),
+    kpi('HWB<sub>Ref,RK</sub> · Nachweis', fmt(R.ref.HWB,1), 'kWh/m²a'),
+    kpi('zulässig', R.lc>0?fmt(R.haupt.zul,1):'–', 'kWh/m²a'),
+    kpi('EEB', fmt(R.anlSK.eeb,1), 'kWh/m²a'),
+    kpi('CO₂', fmt(R.anlSK.co2,1), 'kg/m²a'),
+    kpi('ℓ<sub>c</sub>', fmt(R.lc,2), 'm')
+  ].join('');
+  var b = el('kbadge');
+  b.textContent = k ? k.k : '–';
+  b.style.background = k ? k.c : 'var(--unused)';
+  var v = el('verdict');
+  if (R.lc <= 0 || R.ref.HWB <= 0){ v.className = 'verdict v-na'; v.textContent = 'Nachweis offen'; }
+  else if (R.haupt.ok){ v.className = 'verdict v-ok'; v.textContent = 'Nachweis erfüllt'; }
+  else { v.className = 'verdict v-no'; v.textContent = 'Nachweis nicht erfüllt'; }
+  el('brandSub').textContent = (KAT[S.meta.kat]||KAT.wohn).nm + ' · ' + (R.fall==='neu'?'Neubau':'Renovierung');
+}
+function kpi(l, v, u, hero){
+  return '<div class="kpi'+(hero?' hero':'')+'"><i>'+l+'</i><b>'+v+'</b><u>'+u+'</u></div>';
+}
+
+function malZeilen(){
+  R.bt.forEach(function(b){
+    var n = document.querySelector('[data-out="bt'+b.ref.id+'"]');
+    if (n){
+      n.className = 'res' + (b.verstoss ? ' bad' : '');
+      n.innerHTML = fmt(b.L,2)+'<small>'+(b.verstoss ? 'U &gt; '+fmt(b.typ.umax,2) : 'max '+fmt(b.typ.umax,2))+'</small>';
+    }
+    var s = document.querySelector('[data-out="sch'+b.ref.id+'"]');
+    if (s){
+      if (b.ref.mode !== 'schichten'){ s.innerHTML = ''; }
+      else {
+        var d = b.sch, txt = 'R<sub>si</sub> '+fmt(d.rsi,2)+'  +  Σ d/λ '+fmt(d.sumR,3)+'  +  R<sub>se</sub> '+fmt(d.rse,2)+
+                '  =  R<sub>T</sub> '+fmt(d.RT,3)+' m²K/W   →   <span style="color:var(--accent)">U = '+fmt(d.u,3)+' W/m²K</span>';
+        s.innerHTML = txt;
+      }
+    }
+  });
+  R.fe.forEach(function(w){
+    var n = document.querySelector('[data-out="fe'+w.ref.id+'"]');
+    if (n){
+      n.className = 'res' + (w.verstoss ? ' bad' : '');
+      n.innerHTML = fmt(w.A,2)+' m²<small>A·U·f = '+fmt(w.L,2)+'</small>';
+    }
+    var s = document.querySelector('[data-out="fes'+w.ref.id+'"]');
+    if (s){
+      var I = num(S.klima.sk.rad[w.orient],0);
+      s.innerHTML = 'Solargewinn SK: '+fmt(I,0)+' · '+fmt(w.A,2)+' · '+fmt(w.ff,2)+' · '+fmt(w.g,2)+' · '+fmt(w.fs,2)+
+                    ' · 0,90 = <span style="color:var(--accent)">'+fmt(I*w.A*w.ff*w.g*w.fs*0.9,0)+' kWh/a</span>';
+    }
+  });
+  setTxt('hdBt', R.bt.length+' Bauteile · A = '+fmt(R.Aop,1)+' m² · ΣA·U·f = '+fmt(R.Lop,1)+' W/K');
+  setTxt('hdFe', R.fe.length+' Positionen · A = '+fmt(R.Afe,1)+' m² · ΣA·U·f = '+fmt(R.Lfe,1)+' W/K');
+  setTxt('hdWb', 'L_WB = '+fmt(R.LWB,2)+' W/K');
+  setTxt('hdLft', 'n_eff = '+fmt(R.sk.nEff,3)+' 1/h · L_V = '+fmt(R.sk.LV,1)+' W/K');
+  setTxt('hdAnl', 'EEB '+fmt(R.anlSK.eeb,1)+' · CO₂ '+fmt(R.anlSK.co2,1));
+}
+function setTxt(id, t){ var n = el(id); if (n) n.textContent = t; }
+
+function malSchiene(){
+  var s = R.sk, max = Math.max(s.Ql, s.Qg, 1);
+  function seg(v, col, lab){
+    var h = clamp(v/max*100, 0, 100);
+    return '<div class="bseg" style="height:'+h+'%;background:'+col+'" title="'+lab+' '+fmt(v,0)+' kWh/a">'+
+           (h > 11 ? fmt(v,0) : '')+'</div>';
+  }
+  var nutzbar = s.eta*s.Qg, unnutz = s.Qg - nutzbar;
+
+  el('rail').innerHTML =
+    '<section class="panel"><h4>Wärmebilanz Standortklima</h4>'+
+      '<div class="bal">'+
+        '<div class="bcol">'+seg(s.QV,'var(--loss)','Lüftung')+seg(s.QT,'#8C3F2C','Transmission')+'</div>'+
+        '<div class="bcol">'+seg(unnutz,'var(--unused)','nicht nutzbar')+seg(nutzbar,'var(--gain)','nutzbar')+'</div>'+
+        '<div class="bcol">'+seg(s.Qh,'#5A6E73','Heizwärme')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:14px">'+
+        '<div class="blab" style="flex:1">Verluste<b>'+fmt(s.Ql,0)+'</b></div>'+
+        '<div class="blab" style="flex:1">Gewinne<b>'+fmt(s.Qg,0)+'</b></div>'+
+        '<div class="blab" style="flex:1">Heizwärme<b>'+fmt(s.Qh,0)+'</b></div>'+
+      '</div>'+
+      '<div class="legend" style="margin-top:11px">'+
+        '<span><i class="sw" style="background:#8C3F2C"></i>Transmission</span>'+
+        '<span><i class="sw" style="background:var(--loss)"></i>Lüftung</span>'+
+        '<span><i class="sw" style="background:var(--gain)"></i>nutzbare Gewinne</span>'+
+        '<span><i class="sw" style="background:var(--unused)"></i>η schneidet weg</span>'+
+      '</div>'+
+      '<div class="note" style="margin-top:11px">η = '+fmt(s.eta,3)+' bei γ = '+fmt(s.gamma,3)+
+      '. Von '+fmt(s.Qg,0)+' kWh/a Gewinnen zählen '+fmt(nutzbar,0)+' kWh/a — '+fmt(unnutz,0)+' kWh/a fallen zeitlich nicht mit dem Bedarf zusammen.</div>'+
+    '</section>'+
+
+    '<section class="panel"><h4>Kennzahlen</h4><div class="kv">'+
+      kvRow('Hüllfläche A','<b>'+fmt(R.A,1)+' m²</b>')+
+      kvRow('ℓc = V / A','<b>'+fmt(R.lc,3)+' m</b>')+
+      kvRow('Mittlerer U-Wert','<b>'+fmt(R.um,3)+'</b>')+
+      kvRow('L<sub>T</sub> / L<sub>V</sub>','<b>'+fmt(R.LT,1)+' / '+fmt(R.sk.LV,1)+'</b>')+
+      kvRow('HWB Standortklima','<b>'+fmt(R.sk.HWB,1)+'</b>')+
+      kvRow('HWB Referenzklima','<b>'+fmt(R.rk.HWB,1)+'</b>')+
+      kvRow('HWB<sub>Ref,RK</sub> ohne WRG','<b>'+fmt(R.ref.HWB,1)+'</b>')+
+      kvRow('HEB','<b>'+fmt(R.anlSK.heb,1)+'</b>')+
+      kvRow('HTEB','<b>'+(R.anlSK.hteb>=0?'+':'')+fmt(R.anlSK.hteb,1)+'</b>')+
+      kvRow('EEB','<b>'+fmt(R.anlSK.eeb,1)+'</b>')+
+      kvRow('PEB / n. ern.','<b>'+fmt(R.anlSK.peb,1)+' / '+fmt(R.anlSK.pebne,1)+'</b>')+
+      kvRow('CO₂','<b>'+fmt(R.anlSK.co2,2)+' kg/m²a</b>')+
+    '</div></section>'+
+
+    '<section class="panel"><h4>Plausibilität</h4><div class="checks">'+
+      pruefe(R).map(function(c){
+        return '<div class="chk"><i class="dot d-'+c.lvl+'"></i><span>'+c.t+'</span></div>';
+      }).join('')+
+    '</div></section>';
+}
+function kvRow(l, v){ return '<div><span>'+l+'</span>'+v+'</div>'; }
+
+/* ============================================================
+   8 — Rechenweg
+   ============================================================ */
+function mb(title, tag, body){
+  return '<div class="blk"><h3>'+title+(tag?' <em>'+tag+'</em>':'')+'</h3><div class="mono">'+body+'</div></div>';
+}
+function z(label, val, unit, note){
+  return pad(label, 34) + padL(val, 12) + (unit ? '  ' + unit : '') + (note ? '   <span class="c">'+note+'</span>' : '');
+}
+function hr(){ return '<hr>'; }
+
+function malRechenweg(){
+  var o = [];
+  o.push('<div class="disc noprint"><b>Vorbemessung, nicht Nachweis.</b> Diese Werkbank rechnet die Jahresbilanz nach ÖNORM B 8110-6 in der Struktur, die auch die zertifizierte Software verwendet — aber monatsweise gerechnet, mit den verbindlichen Klimadatensätzen und Nutzungsprofilen der Norm, kommt die Software auf leicht andere Zahlen. Für die Einreichung gilt der Ausweis aus einem registrierten Programm, erstellt von einer befugten Person.</div>');
+
+  /* Geometrie */
+  o.push(mb('Schritt 0 — Geometrie','Kapitel 04',
+    z('Konditionierte BGF', fmt(R.bgf,1), 'm²')+'\n'+
+    z('Brutto-Volumen V', fmt(R.V,1), 'm³')+'\n'+
+    z('Hüllfläche opak', fmt(R.Aop,1), 'm²', 'Summe der Bauteilliste')+'\n'+
+    z('Hüllfläche transparent', fmt(R.Afe,1), 'm²', 'Summe der Fensterliste')+'\n'+
+    hr()+
+    z('Hüllfläche A', '<span class="a">'+fmt(R.A,1)+'</span>', 'm²')+'\n'+
+    z('ℓc = V / A', '<span class="a">'+fmt(R.lc,3)+'</span>', 'm', 'A/V = '+fmt(R.A&&R.V?R.A/R.V:0,3)+' 1/m')+'\n'+
+    z('Bezugsfläche BF = 0,8 · BGF', fmt(R.BF,1), 'm²')+'\n'+
+    z('Luftvolumen VL = 0,8 · V', fmt(R.VL,1), 'm³')));
+
+  /* LT */
+  var lt = R.bt.map(function(b){
+    return '  ' + pad(b.nm.slice(0,26), 27) + padL(fmt(b.A,1),8) + padL(fmt(b.u,3),9) + padL(fmt(b.f,2),7) +
+           padL(fmt(b.L,2),10) + (b.verstoss ? '  <span class="r">U &gt; '+fmt(b.typ.umax,2)+'</span>' : '');
+  }).concat(R.fe.map(function(w){
+    return '  ' + pad(w.nm.slice(0,26), 27) + padL(fmt(w.A,1),8) + padL(fmt(w.u,3),9) + padL(fmt(w.f,2),7) +
+           padL(fmt(w.L,2),10) + (w.verstoss ? '  <span class="r">U &gt; '+fmt(w.typ.umax,2)+'</span>' : '');
+  })).join('\n');
+  o.push(mb('Schritt 1 — Transmissionsleitwert L<sub>T</sub>','L_T = Σ (A · U · f) + L_WB',
+    '  ' + pad('Bauteil',27) + padL('A [m²]',8) + padL('U',9) + padL('f',7) + padL('A·U·f',10) + '\n' +
+    hr() + lt + '\n' + hr() +
+    '  ' + pad('Σ Bauteile',27) + padL(fmt(R.A,1),8) + padL('',9) + padL('',7) + padL(fmt(R.Lbt,2),10) + '\n' +
+    '  ' + pad('Wärmebrücken '+(S.wb.mode==='pauschal'?'(pauschal 2,5 W/K je 100 m² BGF)':'(detailliert Σψ·ℓ)'),51) + padL(fmt(R.LWB,2),10) + '\n' +
+    hr() +
+    z('L_T', '<span class="a">'+fmt(R.LT,2)+'</span>', 'W/K')+'\n'+
+    z('mittlerer U-Wert ohne WB', fmt(R.um,3), 'W/m²K', 'Neubau 0,15–0,30 · Altbau 0,9–1,6')+'\n'+
+    z('L_T / A', fmt(R.umL,3), 'W/m²K')));
+
+  /* Drei Durchgänge */
+  o.push('<div class="blk"><h3>Schritte 2 bis 5 — die Bilanz, dreimal gerechnet</h3>'+
+    '<p class="intro">Dasselbe Gebäude, drei Randbedingungen: das <b>Standortklima</b> liefert die Effizienzklasse auf Seite 1, das <b>Referenzklima</b> macht Gebäude in ganz Österreich vergleichbar, und das Referenzklima <b>ohne Anrechnung der Wärmerückgewinnung</b> liefert den HWB<sub>Ref,RK</sub>, gegen den die OIB-Anforderung geprüft wird.</p></div>');
+
+  o.push(lauftext('Standortklima (SK)', 'Seite 1 · Effizienzklasse · Inserat', R.sk));
+  o.push(lauftext('Referenzklima (RK)', 'Vergleichsrechnung', R.rk));
+  o.push(lauftext('Referenzklima ohne WRG', 'HWB<sub>Ref,RK</sub> · Nachweisgröße', R.ref));
+
+  /* Anlage */
+  var a = R.anlSK, tr = a.tr;
+  o.push(mb('Schritt 6 — Haustechnik: HWB → HEB → EEB → PEB / CO₂','Kapitel 10',
+    z('HWB Standortklima', fmt(R.sk.HWB,1), 'kWh/m²a')+'\n'+
+    z('Warmwasserwärmebedarf', fmt(a.wwwb,1), 'kWh/m²a', a.solar>0 ? 'davon '+fmt(a.solar*100,0)+' % solar' : '')+'\n'+
+    (a.solar>0 ? z('  verbleibend nach Solarthermie', fmt(a.wwRest,1), 'kWh/m²a')+'\n' : '')+
+    hr()+
+    z('Nutzwärme', fmt(a.nutzw,1), 'kWh/m²a')+'\n'+
+    z('× (1 + '+fmt(a.vl*100,0)+' % Systemverluste)', fmt(a.abErz,1), 'kWh/m²a', 'ab Erzeuger')+'\n'+
+    z('÷ '+(a.eff>1.5?'JAZ':'Nutzungsgrad')+' '+fmt(a.eff,2)+'  ('+esc(a.erzNm)+')', fmt(a.eebErz,1), 'kWh/m²a', esc(tr.nm))+'\n'+
+    z('+ Hilfsenergie (Strom)', fmt(a.hilf,1), 'kWh/m²a')+'\n'+
+    (a.hh>0 ? z('+ Haushaltsstrom', fmt(a.hh,1), 'kWh/m²a')+'\n' : '')+
+    (a.pvAnr>0 ? z('− PV-Eigenverbrauch ('+fmt(a.pvQuote*100,0)+' % Deckel)', fmt(a.pvAnr,1), 'kWh/m²a')+'\n' : '')+
+    hr()+
+    z('HEB = Erzeuger + Hilfsenergie', fmt(a.heb,1), 'kWh/m²a')+'\n'+
+    z('HTEB = HEB − HWB − WWWB', (a.hteb>=0?'+':'')+fmt(a.hteb,1), 'kWh/m²a', a.hteb<0?'negativ — die Wärmepumpe liefert mehr Wärme als sie Energie bezieht':'')+'\n'+
+    hr()+
+    z('davon Strom', fmt(a.strom,1), 'kWh/m²a')+'\n'+
+    z('davon '+esc(tr.nm), fmt(a.brenn,1), 'kWh/m²a')+'\n'+
+    z('EEB', '<span class="big">'+fmt(a.eeb,1)+'</span>', 'kWh/m²a')+'\n'+
+    hr()+
+    z('PEB = '+fmt(a.strom,1)+'·'+fmt(FAC.el.pe,2)+' + '+fmt(a.brenn,1)+'·'+fmt(tr.pe,2), fmt(a.peb,1), 'kWh/m²a')+'\n'+
+    z('PEB n. ern.', fmt(a.pebne,1), 'kWh/m²a', 'Grundlage der meisten Förderrichtlinien')+'\n'+
+    z('CO₂eq', fmt(a.co2,2), 'kg/m²a')));
+
+  /* Nachweis */
+  var nw = R.reqs.map(function(r){
+    return '  ' + pad(r.n, 34) + pad(fmt(r.C,0)+' × (1 + '+fmt(r.x,1)+'/ℓc)', 21) +
+           padL(fmt(r.zul,1),7) + '  ' +
+           (R.lc<=0 ? '' : (r.ok ? '<span class="g">erfüllt</span>' : '<span class="r">nicht erfüllt</span>'));
+  }).join('\n');
+  o.push(mb('Schritt 7 — Nachweis gegen OIB RL 6',''+(R.fall==='neu'?'Neubau':'Größere Renovierung')+' · ℓc = '+fmt(R.lc,3)+' m',
+    z('HWB_Ref,RK des Gebäudes', '<span class="a">'+fmt(R.ref.HWB,1)+'</span>', 'kWh/m²a')+'\n'+hr()+
+    '  ' + pad('Ausgabe / Nachweisweg',34) + pad('Formel',21) + padL('zulässig',7) + '\n' + hr() +
+    nw + '\n' + hr() +
+    '<span class="c">  Zusätzlich in jeder Ausgabe einzuhalten: die Umax-Tabelle je Bauteil, der\n'+
+    '  erneuerbare Anteil bzw. hocheffiziente alternative Systeme, der sommerliche\n'+
+    '  Wärmeschutz und die Vermeidung von Kondensat und Schimmel.</span>'));
+
+  el('p-rechenweg').innerHTML = o.join('');
+}
+
+function lauftext(titel, tag, s){
+  var sol = s.sdet.filter(function(d){ return d.q > 0; }).map(function(d){
+    return '  ' + pad(d.nm.slice(0,22),23) + pad(d.orient,5) + padL(fmt(d.I,0),6) + ' · ' + padL(fmt(d.A,1),6) +
+           ' · ' + fmt(d.ff,2) + ' · ' + fmt(d.g,2) + ' · ' + fmt(d.fs,2) + ' · 0,90 = ' + padL(fmt(d.q,0),7);
+  }).join('\n');
+
+  return mb(titel, tag,
+    '<span class="c">Schritt 2 — Lüftungsleitwert</span>\n'+
+    z('n · (1 − η_WRG) = '+fmt(s.n,2)+' · (1 − '+fmt(s.wrg,2)+')', fmt(s.nEff,3), '1/h')+'\n'+
+    z('L_V = 0,34 · n_eff · V_L', fmt(s.LV,2), 'W/K')+'\n\n'+
+
+    '<span class="c">Schritt 3 — Verluste über die Heizperiode · HGT '+fmt(s.hgt,0)+' Kd · '+fmt(s.ht,0)+' Heiztage</span>\n'+
+    z('Q_T = 0,024 · '+fmt(R.LT,2)+' · '+fmt(s.hgt,0), fmt(s.QT,0), 'kWh/a')+'\n'+
+    z('Q_V = 0,024 · '+fmt(s.LV,2)+' · '+fmt(s.hgt,0), fmt(s.QV,0), 'kWh/a')+'\n'+
+    z('Q_l = Q_T + Q_V', fmt(s.Ql,0), 'kWh/a')+'\n\n'+
+
+    '<span class="c">Schritt 4 — Gewinne</span>\n'+
+    z('Q_i = 0,024 · '+fmt(s.qi,2)+' · '+fmt(R.BF,1)+' · '+fmt(s.ht,0), fmt(s.Qi,0), 'kWh/a')+'\n'+
+    (sol ? '  ' + pad('Fenster',23) + pad('Orient',5) + padL('I',6) + '   ' + padL('A',6) + '     F_F    g     F_S\n' + sol + '\n' : '')+
+    z('Q_s', fmt(s.Qs,0), 'kWh/a')+'\n'+
+    z('Q_g = Q_i + Q_s', fmt(s.Qg,0), 'kWh/a')+'\n\n'+
+
+    '<span class="c">Schritt 5 — Ausnutzungsgrad und Ergebnis</span>\n'+
+    z('γ = Q_g / Q_l', fmt(s.gamma,3), '')+'\n'+
+    z('τ = C_wirk · BGF / (L_T + L_V)', fmt(s.tau,1), 'h', fmt(R.Cw,0)+' Wh/m²K · '+fmt(R.bgf,0)+' m²')+'\n'+
+    z('a = 1 + τ / 16', fmt(s.a,3), '')+'\n'+
+    z('η = (1 − γ^a) / (1 − γ^(a+1))', fmt(s.eta,4), '')+'\n'+
+    hr()+
+    z('Q_h = Q_l − η · Q_g', fmt(s.Qh,0), 'kWh/a')+'\n'+
+    z('HWB = Q_h / BGF', '<span class="big">'+fmt(s.HWB,1)+'</span>', 'kWh/m²a'));
+}
+
+/* ============================================================
+   9 — Ausweis-Blätter
+   ============================================================ */
+function malAusweis(){
+  var a = R.anlSK, k = R.klasse;
+  var maxSk = 250;
+  function bar(nm, unter, val, unit, farbe, skala){
+    var w = clamp(val/skala*100, 0, 100);
+    return '<div class="kbar"><div class="nm">'+nm+'<em>'+unter+'</em></div>'+
+           '<div class="ktrack"><div class="kfill" style="width:'+w+'%;background:'+farbe+'"></div></div>'+
+           '<div class="vl">'+fmt(val,1)+'<em>'+unit+'</em></div></div>';
+  }
+  var skala = CLS.map(function(c,i){
+    var lo = i===0 ? 0 : CLS[i-1].max;
+    var rng = i===CLS.length-1 ? '> 250' : (i===0 ? '≤ 10' : '> '+lo+' bis ≤ '+c.max);
+    return '<div class="srow'+(k&&k.k===c.k?' hit':'')+'"><div class="sbadge" style="background:'+c.c+'">'+c.k+'</div>'+
+           '<div style="display:flex;gap:9px;align-items:center;min-width:0">'+
+           '<div class="sbar" style="background:'+c.c+';width:'+(15+i*9.5)+'%"></div>'+
+           '<span class="sr">'+rng+' kWh/m²a · '+c.t+'</span></div></div>';
+  }).join('');
+
+  var s1 =
+    '<div class="sheet"><div class="sheet-hd"><div><h2>Energieausweis</h2>'+
+    '<div style="font-size:12px;color:var(--ink-2);margin-top:3px">'+esc(S.meta.name||'ohne Bezeichnung')+'</div></div>'+
+    '<div class="pg">Seite 1<br>Deckblatt</div></div>'+
+    '<div class="gdata">'+
+      gd('Adresse', S.meta.adresse) + gd('Katastralgemeinde', S.meta.kg) +
+      gd('Grundstücksnummer', S.meta.gstnr) + gd('Baujahr', S.meta.baujahr) +
+      gd('Gebäudekategorie', (KAT[S.meta.kat]||KAT.wohn).nm) + gd('Anlass', R.fall==='neu'?'Neubau':'Größere Renovierung') +
+      gd('Standort', S.meta.ort) + gd('Seehöhe', S.meta.seehoehe ? fmt(num(S.meta.seehoehe,0),0)+' m' : '') +
+    '</div>'+
+    '<h3>Kennzahlen im Standortklima</h3>'+
+    '<div class="kbars">'+
+      bar('HWB','Heizwärmebedarf', R.sk.HWB, 'kWh/m²a', k?k.c:'var(--unused)', maxSk)+
+      bar('EEB','Endenergiebedarf', a.eeb, 'kWh/m²a', 'var(--accent)', maxSk)+
+      bar('PEB','Primärenergie nicht erneuerbar', a.pebne, 'kWh/m²a', 'var(--ink-3)', maxSk)+
+      bar('CO₂','Treibhausgasemissionen', a.co2, 'kg/m²a', '#8C3F2C', 60)+
+    '</div>'+
+    '<h3>Effizienzklasse nach HWB im Standortklima</h3>'+
+    '<div class="scale">'+skala+'</div>'+
+    '<div class="foot">Klassifiziert wird im Standortklima. Mit der Ausgabe 2025 stellt die OIB-Richtlinie 6 auf eine Skala A bis G nach EPBD-Vorgabe um — die Klassen A++ und A+ entfallen dann. Seit 1. Juli 2026 müssen im Inserat Effizienzklasse, Heizwärmebedarf und Endenergiebedarf stehen.</div></div>';
+
+  var s2 =
+    '<div class="sheet"><div class="sheet-hd"><div><h2>Kennzahlen und Geometrie</h2></div><div class="pg">Seite 2<br>Bilanz</div></div>'+
+    '<div class="tw"><table><thead><tr><th>Größe</th><th class="n">Referenzklima</th><th class="n">Standortklima</th><th>Einheit</th></tr></thead><tbody>'+
+      tr2('Heizgradtage HGT<sub>20/12</sub>', fmt(R.rk.hgt,0), fmt(R.sk.hgt,0), 'Kd')+
+      tr2('Heiztage', fmt(R.rk.ht,0), fmt(R.sk.ht,0), 'd')+
+      tr2('Transmissionsverluste Q<sub>T</sub>', fmt(R.rk.QT,0), fmt(R.sk.QT,0), 'kWh/a')+
+      tr2('Lüftungsverluste Q<sub>V</sub>', fmt(R.rk.QV,0), fmt(R.sk.QV,0), 'kWh/a')+
+      tr2('Gewinne Q<sub>g</sub>', fmt(R.rk.Qg,0), fmt(R.sk.Qg,0), 'kWh/a')+
+      tr2('Ausnutzungsgrad η', fmt(R.rk.eta,3), fmt(R.sk.eta,3), '–')+
+      tr2('<b>HWB</b>', '<b>'+fmt(R.rk.HWB,1)+'</b>', '<b>'+fmt(R.sk.HWB,1)+'</b>', 'kWh/m²a')+
+      tr2('HWB<sub>Ref</sub> (ohne WRG)', '<b>'+fmt(R.ref.HWB,1)+'</b>', '–', 'kWh/m²a')+
+      tr2('WWWB', fmt(a.wwwb,1), fmt(a.wwwb,1), 'kWh/m²a')+
+      tr2('HTEB', fmt(R.anlRK.hteb,1), fmt(a.hteb,1), 'kWh/m²a')+
+      tr2('HEB', fmt(R.anlRK.heb,1), fmt(a.heb,1), 'kWh/m²a')+
+      tr2('<b>EEB</b>', '<b>'+fmt(R.anlRK.eeb,1)+'</b>', '<b>'+fmt(a.eeb,1)+'</b>', 'kWh/m²a')+
+      tr2('PEB', fmt(R.anlRK.peb,1), fmt(a.peb,1), 'kWh/m²a')+
+      tr2('PEB nicht erneuerbar', fmt(R.anlRK.pebne,1), fmt(a.pebne,1), 'kWh/m²a')+
+      tr2('CO₂eq', fmt(R.anlRK.co2,2), fmt(a.co2,2), 'kg/m²a')+
+    '</tbody></table></div>'+
+    '<div class="tw"><table><caption>Geometrie</caption><tbody>'+
+      tr1('Konditionierte Brutto-Grundfläche BGF', fmt(R.bgf,1)+' m²')+
+      tr1('Brutto-Volumen V', fmt(R.V,1)+' m³')+
+      tr1('Wärmeübertragende Hüllfläche A', fmt(R.A,1)+' m²')+
+      tr1('Charakteristische Länge ℓ<sub>c</sub> = V / A', fmt(R.lc,3)+' m')+
+      tr1('A / V', fmt(R.V?R.A/R.V:0,3)+' 1/m')+
+      tr1('Mittlerer U-Wert der Hülle', fmt(R.um,3)+' W/m²K')+
+      tr1('Transmissionsleitwert L<sub>T</sub>', fmt(R.LT,2)+' W/K')+
+      tr1('Lüftungsleitwert L<sub>V</sub>', fmt(R.sk.LV,2)+' W/K')+
+    '</tbody></table></div>'+
+    '<h3>Nachweis</h3>'+
+    '<div class="tw"><table><thead><tr><th>Ausgabe / Nachweisweg</th><th>Formel</th><th class="n">zulässig</th><th class="n">Gebäude</th><th>Ergebnis</th></tr></thead><tbody>'+
+    R.reqs.map(function(r){
+      return '<tr><td>'+esc(r.n)+'</td><td class="k">'+fmt(r.C,0)+' × (1 + '+fmt(r.x,1)+'/ℓc)</td>'+
+             '<td class="n">'+fmt(r.zul,1)+'</td><td class="n">'+fmt(R.ref.HWB,1)+'</td>'+
+             '<td style="color:'+(r.ok?'var(--ok)':'var(--bad)')+';font-weight:600">'+(R.lc<=0?'–':(r.ok?'erfüllt':'nicht erfüllt'))+'</td></tr>';
+    }).join('')+
+    '</tbody></table></div></div>';
+
+  var s3 =
+    '<div class="sheet"><div class="sheet-hd"><div><h2>Bauteile und Anlagentechnik</h2></div><div class="pg">Seite 3<br>Nachweisdaten</div></div>'+
+    '<div class="tw"><table><caption>Wärmeübertragende Bauteile</caption>'+
+    '<thead><tr><th>Bauteil</th><th>Typ</th><th class="n">A [m²]</th><th class="n">U</th><th class="n">U<sub>max</sub></th><th class="n">f</th><th class="n">A·U·f</th></tr></thead><tbody>'+
+    R.bt.concat(R.fe).map(function(b){
+      return '<tr><td>'+esc(b.nm)+'</td><td style="font-size:11.5px;color:var(--ink-2)">'+esc(b.typ.nm)+'</td>'+
+             '<td class="n">'+fmt(b.A,1)+'</td><td class="n"'+(b.verstoss?' style="color:var(--bad);font-weight:600"':'')+'>'+fmt(b.u,3)+'</td>'+
+             '<td class="n">'+fmt(b.typ.umax,2)+'</td><td class="n">'+fmt(b.f,2)+'</td><td class="n">'+fmt(b.L,2)+'</td></tr>';
+    }).join('')+
+    '</tbody><tfoot><tr><td colspan="2">Summe · Wärmebrücken '+fmt(R.LWB,2)+' W/K</td><td class="n">'+fmt(R.A,1)+
+    '</td><td class="n">'+fmt(R.um,3)+'</td><td class="n"></td><td class="n"></td><td class="n">'+fmt(R.LT,2)+'</td></tr></tfoot></table></div>'+
+    '<div class="tw"><table><caption>Anlagentechnik</caption><tbody>'+
+      tr1('Wärmeerzeuger', esc(a.erzNm))+
+      tr1('Energieträger', esc(a.tr.nm)+' · f<sub>PE</sub> '+fmt(a.tr.pe,2)+' · f<sub>PE,n.ern.</sub> '+fmt(a.tr.ne,2)+' · f<sub>CO₂</sub> '+fmt(a.tr.co*1000,0)+' g/kWh')+
+      tr1('Nutzungsgrad bzw. JAZ', fmt(a.eff,2))+
+      tr1('Systemverluste Abgabe / Verteilung / Speicher', fmt(a.vl*100,0)+' %')+
+      tr1('Hilfsenergie', fmt(a.hilf,1)+' kWh/m²a')+
+      tr1('Lüftung', S.lft.wrgAktiv ? 'mechanisch, η<sub>WRG</sub> = '+fmt(num(S.lft.wrg,0),0)+' %, n<sub>eff</sub> = '+fmt(R.sk.nEff,3)+' 1/h' : 'Fensterlüftung, n = '+fmt(R.sk.n,2)+' 1/h')+
+      tr1('Solarthermie Deckungsgrad Warmwasser', fmt(a.solar*100,0)+' %')+
+      tr1('Photovoltaik', num(S.anl.pvKwp,0) > 0 ? fmt(num(S.anl.pvKwp,0),2)+' kW<sub>p</sub>, anrechenbar '+fmt(a.pvAnr,1)+' kWh/m²a ('+fmt(a.pvQuote*100,0)+' % Deckel)' : 'keine')+
+    '</tbody></table></div></div>';
+
+  /* Seite 4 — Rangliste der Verluste als Grundlage für Empfehlungen */
+  var rang = R.bt.concat(R.fe).filter(function(b){ return b.L > 0; })
+    .sort(function(x,y){ return y.L - x.L; }).slice(0,8);
+  var s4 =
+    '<div class="sheet"><div class="sheet-hd"><div><h2>Befund und Ansatzpunkte</h2></div><div class="pg">Seite 4<br>Auswertung</div></div>'+
+    '<div class="tw"><table><caption>Wer verliert wie viel — Anteil am Transmissionsleitwert</caption>'+
+    '<thead><tr><th>Bauteil</th><th class="n">A·U·f [W/K]</th><th class="n">Anteil</th><th>Beurteilung</th></tr></thead><tbody>'+
+    rang.map(function(b){
+      var p = R.LT > 0 ? b.L/R.LT*100 : 0;
+      var beur = b.verstoss ? '<span style="color:var(--bad);font-weight:600">über U<sub>max</sub> — muss saniert werden</span>'
+               : (b.u > b.typ.umax*0.75 ? 'im zulässigen Bereich, aber Reserve vorhanden' : 'gut');
+      return '<tr><td>'+esc(b.nm)+'</td><td class="n">'+fmt(b.L,2)+'</td><td class="n">'+fmt(p,1)+' %</td><td>'+beur+'</td></tr>';
+    }).join('')+
+    '<tr><td>Lüftung (L<sub>V</sub>, kein Bauteil)</td><td class="n">'+fmt(R.sk.LV,2)+'</td><td class="n">'+
+    fmt((R.LT+R.sk.LV)>0 ? R.sk.LV/(R.LT+R.sk.LV)*100 : 0,1)+' % der Gesamtverluste</td><td>'+
+    (S.lft.wrgAktiv ? 'mit Wärmerückgewinnung gerechnet' : 'Fensterlüftung — gegen diesen Anteil hilft keine Dämmung, nur kontrollierte Lüftung mit WRG')+
+    '</td></tr>'+
+    '</tbody></table></div>'+
+    '<h3>Plausibilität</h3><div class="checks">'+
+    pruefe(R).map(function(c){ return '<div class="chk"><i class="dot d-'+c.lvl+'"></i><span>'+c.t+'</span></div>'; }).join('')+
+    '</div>'+
+    '<div class="foot"><b>Diese Auswertung ist kein ausgestellter Energieausweis.</b> Sie zeigt die Rechnung in der Struktur des Ausweises nach OIB-Richtlinie 6, gerechnet als Jahresbilanz nach ÖNORM B 8110-6. Ein rechtsgültiger Ausweis wird monatsweise mit den normativen Klimadatensätzen gerechnet, setzt die Inaugenscheinnahme des Gebäudes voraus, muss von einer befugten Person erstellt und in der Landesdatenbank registriert werden. Ersteller laut Eingabe: '+
+    esc(S.meta.ersteller || '—')+'.</div></div>';
+
+  el('p-ausweis').innerHTML = s1 + s2 + s3 + s4;
+}
+function gd(l, v){ return '<div><i>'+l+'</i><b>'+(esc(v)||'—')+'</b></div>'; }
+function tr2(l, a, b, u){ return '<tr><td>'+l+'</td><td class="n">'+a+'</td><td class="n">'+b+'</td><td style="color:var(--ink-3);font-family:var(--f-mono);font-size:11px">'+u+'</td></tr>'; }
+function tr1(l, v){ return '<tr><td style="width:52%">'+l+'</td><td>'+v+'</td></tr>'; }
+
+/* ============================================================
+   10 — Referenz und Projektverwaltung
+   ============================================================ */
+function malReferenz(){
+  function tab(cap, head, rows){
+    return '<div class="tw"><table><caption>'+cap+'</caption><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+  el('p-referenz').innerHTML =
+    '<div class="intro"><h2>Nachschlagewerte</h2>Alle Zahlen, mit denen die Werkbank rechnet — sichtbar, damit du jede Ausgabe gegen die Quelle prüfen kannst. Grundlage sind OIB-Richtlinie 6 (Ausgaben 2023 und September 2025) sowie ÖNORM B 8110-5 und -6.</div>'+
+
+    tab('Maximale U-Werte für wärmeübertragende Bauteile [W/m²K]',
+      '<th>Bauteil</th><th class="n">U<sub>max</sub></th><th class="n">Standard-f</th><th class="n">R<sub>si</sub></th><th class="n">R<sub>se</sub></th>',
+      Object.keys(TYP).map(function(k){ var t=TYP[k];
+        return '<tr><td>'+esc(t.nm)+'</td><td class="n">'+fmt(t.umax,2)+'</td><td class="n">'+fmt(t.f,2)+
+               '</td><td class="n">'+fmt(t.rsi,2)+'</td><td class="n">'+fmt(t.rse,2)+'</td></tr>'; }).join('')+
+      Object.keys(FTYP).map(function(k){ var t=FTYP[k];
+        return '<tr><td>'+esc(t.nm)+'</td><td class="n">'+fmt(t.umax,2)+'</td><td class="n">1,00</td><td class="n">–</td><td class="n">–</td></tr>'; }).join(''))+
+
+    tab('Rechenwerte λ [W/mK]','<th>Material</th><th class="n">λ</th><th>Material</th><th class="n">λ</th>',
+      (function(){ var r=''; for (var i=0;i<MAT.length;i+=2){
+        r += '<tr><td>'+esc(MAT[i][0])+'</td><td class="n">'+fmt(MAT[i][1],3)+'</td>'+
+             (MAT[i+1] ? '<td>'+esc(MAT[i+1][0])+'</td><td class="n">'+fmt(MAT[i+1][1],3)+'</td>' : '<td></td><td></td>')+'</tr>'; }
+        return r; })())+
+
+    tab('Konversionsfaktoren OIB RL 6:2023','<th>Energieträger</th><th class="n">f<sub>PE</sub></th><th class="n">f<sub>PE,n.ern.</sub></th><th class="n">f<sub>CO₂</sub> [g/kWh]</th>',
+      Object.keys(FAC).map(function(k){ var f=FAC[k];
+        return '<tr><td>'+esc(f.nm)+'</td><td class="n">'+fmt(f.pe,2)+'</td><td class="n">'+fmt(f.ne,2)+
+               '</td><td class="n">'+fmt(f.co*1000,0)+'</td></tr>'; }).join(''))+
+
+    tab('Zulässiger HWB<sub>Ref,RK</sub> = C × (1 + x / ℓ<sub>c</sub>)','<th>Ausgabe / Weg</th><th class="k">Neubau</th><th class="k">Größere Renovierung</th>',
+      REQ.map(function(r){
+        return '<tr><td>'+esc(r.n)+'</td><td class="k">'+r.neu[0]+' × (1 + '+fmt(r.neu[1],1)+'/ℓc)</td>'+
+               '<td class="k">'+r.ren[0]+' × (1 + '+fmt(r.ren[1],1)+'/ℓc)</td></tr>'; }).join(''))+
+
+    tab('Wärmeerzeuger — Voreinstellungen','<th>Erzeuger</th><th class="n">η bzw. JAZ</th><th>Energieträger</th><th class="n">Hilfsenergie</th>',
+      Object.keys(ERZ).filter(function(k){return k!=='frei';}).map(function(k){ var e=ERZ[k];
+        return '<tr><td>'+esc(e.nm)+'</td><td class="n">'+fmt(e.eff,2)+'</td><td>'+esc(FAC[e.tr].nm)+
+               '</td><td class="n">'+fmt(e.hilf,1)+' kWh/m²a</td></tr>'; }).join(''))+
+
+    tab('Nutzungsprofile — Richtwerte','<th>Gebäudekategorie</th><th class="n">q<sub>i</sub> [W/m² BF]</th><th class="n">WWWB [kWh/m²a]</th><th class="n">n [1/h]</th>',
+      Object.keys(KAT).map(function(k){ var c=KAT[k];
+        return '<tr><td>'+esc(c.nm)+'</td><td class="n">'+fmt(c.qi,2)+'</td><td class="n">'+fmt(c.wwwb,1)+
+               '</td><td class="n">'+fmt(c.n,2)+'</td></tr>'; }).join(''))+
+
+    '<div class="disc">Die Nutzungsprofile der Kategorien 2 bis 12 sind hier als grobe Richtwerte hinterlegt, damit die Rechnung überhaupt läuft. Verbindlich sind allein die Profile der <b>ÖNORM B 8110-5</b>. Bei Nicht-Wohngebäuden kommen außerdem Kühl-, Beleuchtungs- und Betriebsstrombedarf dazu, die diese Werkbank nicht rechnet.</div>';
+}
+
+function malProjekt(){
+  el('p-projekt').innerHTML =
+    '<div class="intro"><h2>Projekt sichern und weitergeben</h2>Die Eingaben bleiben im Browser gespeichert und sind beim nächsten Öffnen wieder da. Für die Weitergabe oder ein Backup: den Text unten kopieren.</div>'+
+    '<div class="panel" style="margin-bottom:14px"><h4>Vorlagen</h4>'+
+      '<div class="rowbtns" style="margin-top:0">'+
+        '<button class="btn" id="pLeer" type="button">Leeres Projekt</button>'+
+        '<button class="btn ghost" id="pDemoA" type="button">Beispiel EFH Tirol · Variante A</button>'+
+        '<button class="btn ghost" id="pDemoB" type="button">Variante B — bessere Hülle</button>'+
+        '<button class="btn ghost" id="pDemoC" type="button">Variante B + Lüftung mit WRG</button>'+
+      '</div>'+
+      '<div class="note">Variante A ist das durchgerechnete Einfamilienhaus aus dem Begleitdokument: BGF 160 m², V 448 m³, ℓc 1,24 m, HWB<sub>SK</sub> 45,6 kWh/m²a. Damit lässt sich jede Zahl der Werkbank gegen eine unabhängig gerechnete Quelle prüfen.</div>'+
+    '</div>'+
+    '<div class="panel"><h4>Projektdaten als Text</h4>'+
+      '<textarea id="pJson" spellcheck="false" aria-label="Projektdaten"></textarea>'+
+      '<div class="rowbtns">'+
+        '<button class="btn ghost" id="pCopy" type="button">In die Zwischenablage</button>'+
+        '<button class="btn" id="pLoad" type="button">Aus dem Feld laden</button>'+
+        '<span id="pMsg" style="align-self:center;font-size:12px;color:var(--ink-2)"></span>'+
+      '</div>'+
+    '</div>';
+
+  el('pLeer').addEventListener('click', function(){ lade(leeresProjekt()); });
+  el('pDemoA').addEventListener('click', function(){ lade(demoA()); });
+  el('pDemoB').addEventListener('click', function(){
+    var d = demoA(); d.meta.name = 'Einfamilienhaus, Variante B';
+    d.bauteile[0].u = 0.17; d.bauteile[1].u = 0.12; d.bauteile[2].u = 0.25;
+    d.fenster.forEach(function(f){ f.u = 0.85; }); lade(d);
+  });
+  el('pDemoC').addEventListener('click', function(){
+    var d = demoA(); d.meta.name = 'Variante B mit Komfortlüftung';
+    d.bauteile[0].u = 0.17; d.bauteile[1].u = 0.12; d.bauteile[2].u = 0.25;
+    d.fenster.forEach(function(f){ f.u = 0.85; });
+    d.lft.wrgAktiv = true; d.lft.wrg = 80; lade(d);
+  });
+  el('pCopy').addEventListener('click', function(){
+    var t = el('pJson'); t.select();
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t.value).then(function(){ msg('Kopiert.'); }, function(){ msg('Markiert — mit Strg+C kopieren.'); });
+    } else msg('Markiert — mit Strg+C kopieren.');
+  });
+  el('pLoad').addEventListener('click', function(){
+    try {
+      var d = JSON.parse(el('pJson').value);
+      if (!d || !d.geo || !d.bauteile) throw new Error('Es fehlen Pflichtfelder (geo, bauteile).');
+      lade(d); msg('Geladen.');
+    } catch(e){ msg('Das ließ sich nicht lesen: ' + e.message); }
+  });
+  el('pJson').value = JSON.stringify(S, null, 1);
+}
+function msg(t){ var n = el('pMsg'); if (n) n.textContent = t; }
+function lade(d){ S = d; baueEingabe(); tick(); malProjekt(); zeigeTab('p-eingabe'); }
+
+var KEY = 'ea-werkbank-v1';
+function speichern(){
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){}
+  var t = el('pJson'); if (t && document.activeElement !== t) t.value = JSON.stringify(S, null, 1);
+}
+function laden(){
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw){ var d = JSON.parse(raw); if (d && d.geo && d.bauteile) return d; }
+  } catch(e){}
+  return null;
+}
+
+/* ============================================================
+   11 — Tabs und Start
+   ============================================================ */
+var PANELS = ['p-eingabe','p-rechenweg','p-ausweis','p-referenz','p-projekt'];
+function zeigeTab(id){
+  PANELS.forEach(function(p){ var n = el(p); if (n) n.hidden = (p !== id); });
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(t){
+    t.setAttribute('aria-selected', String(t.getAttribute('data-p') === id));
+  });
+  window.scrollTo({top:0, behavior:'instant'});
+}
+Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(t){
+  t.addEventListener('click', function(){ zeigeTab(t.getAttribute('data-p')); });
+});
+el('btnDruck').addEventListener('click', function(){
+  zeigeTab('p-ausweis');
+  setTimeout(function(){
+    try { window.print(); }
+    catch(e){ alert('Der Druckdialog ließ sich hier nicht öffnen. Die Seite in einem eigenen Tab öffnen und dort Strg+P bzw. ⌘P drücken.'); }
+  }, 60);
+});
+
+S = laden() || demoA();
+baueEingabe();
+malReferenz();
+malProjekt();
+tick();
+})();
+</script>
+
+</body>
+</html>
