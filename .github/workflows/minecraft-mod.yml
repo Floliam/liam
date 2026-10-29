@@ -1,0 +1,36 @@
+name: Minecraft-Mod bauen
+
+on:
+  push:
+    paths:
+      - 'minecraft-mod/**'
+      - '.github/workflows/minecraft-mod.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: minecraft-mod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Mod bauen
+        run: |
+          chmod +x gradlew
+          ./gradlew build --stacktrace
+
+      - name: Jar hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: playerlocatorbar-1.18.2-forge
+          path: minecraft-mod/build/libs/*.jar
+          if-no-files-found: error

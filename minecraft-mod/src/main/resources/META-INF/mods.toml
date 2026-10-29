@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[40,)"
+license="MIT"
+
+[[mods]]
+modId="playerlocatorbar"
+version="1.0.0"
+displayName="Player Locator Bar"
+authors="Floliam"
+description='''
+Rein clientseitige HUD-Leiste über der XP-Leiste: zeigt als Punkte, in welcher Richtung sich andere Spieler befinden.
+Der nächste Spieler wird als größerer Punkt dargestellt, samt Entfernung und Höhe (Y).
+Verändert weder die Welt noch andere Spieler und wird auf dem Server nicht benötigt.
+'''
+
+[[dependencies.playerlocatorbar]]
+    modId="forge"
+    mandatory=true
+    versionRange="[40,)"
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.playerlocatorbar]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.18.2,1.19)"
+    ordering="NONE"
+    side="CLIENT"
