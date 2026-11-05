@@ -273,8 +273,11 @@ def roof(p, s, t):
     return WHITE
 
 
-ROOF_BREAK_X = 3.6  # ab hier fällt das Dach nach hinten um 22,5° ab
-ROOF_END = (ROOF_BREAK_X - 0.92, ROOF_Y - 0.38)  # Dachende über der Heckscheibe
+# A3 Sportback: Dach läuft fast bis ans Heck und fällt erst am Ende leicht zum Spoiler ab,
+# die Heckscheibe steht steil (22,5° aus der Senkrechten).
+ROOF_BREAK_X = 2.3
+ROOF_END = (1.5, ROOF_Y - 0.8 * 0.414)  # Dachende / Spoiler
+TAILGATE_Y = 3.3  # Unterkante Heckscheibe
 
 
 def roof_line(x):
@@ -283,24 +286,20 @@ def roof_line(x):
 
 def cabin_side(p, s, t):
     x, y, _ = p
-    # Fensterlinie: oben folgt sie dem abfallenden Dach, unten steigt sie hinten an
-    top = roof_line(x) - 0.16
-    bottom = BELT_Y + 0.23 + max(0.0, 4.6 - x) * 0.2
-    rear_edge = 3.5 + (y - 3.4) * 0.6  # schräge Hinterkante des Dreiecksfensters
-    if y > top + 0.06 or y < bottom - 0.08 or x < rear_edge - 0.09:
-        return WHITE  # C-/D-Säule und Dachrahmen in Wagenfarbe
+    # Fensterlinie: oben sinkt sie nach hinten leicht, unten steigt sie an -> spitz zulaufend
+    top = roof_line(x) - 0.16 - max(0.0, 5.0 - x) * 0.05
+    bottom = BELT_Y + 0.23 + max(0.0, 4.6 - x) * 0.22
+    rear_edge = 2.2 + (y - 3.4) * 0.9  # Hinterkante Dreiecksfenster, parallel zur Heckscheibe
+    if y > top + 0.06 or y < bottom - 0.08 or x < rear_edge - 0.1:
+        return WHITE  # breite D-Säule und Dachrahmen in Wagenfarbe
     if y > top or y < bottom or x < rear_edge or x > 9.55:
         return TRIM  # schwarze Fensterleisten (Black-Optik)
-    if 4.3 < x < 4.42 or 6.25 < x < 6.6:
-        return BLACK  # Trennsteg zum Dreiecksfenster, B-Säule
+    if 3.85 < x < 3.97 or 6.25 < x < 6.6:
+        return BLACK  # Steg zum Dreiecksfenster, B-Säule
     k = x - (y - 3.38) * 0.8
-    if 4.75 < k < 5.05 or 7.6 < k < 7.8:
+    if 4.6 < k < 4.9 or 7.6 < k < 7.8:
         return GLASS_HI
     return GLASS
-
-
-def roof_rear_side(p, s, t):
-    return WHITE
 
 
 def windshield(p, s, t):
@@ -315,10 +314,8 @@ def windshield(p, s, t):
 
 
 def hatch(p, s, t):
-    if t < 0.06:
+    if t < 0.06 or t > 0.94:
         return BLACK
-    if t > 0.86:
-        return WHITE
     if s < 0.04 or s > 0.96:
         return TRIM
     k = s + t * 0.4
@@ -409,9 +406,10 @@ def build_elements():
         return {"north": cabin_side, "south": cabin_side, "up": roof, "east": solid(GLASS)}.get(face, solid(WHITE))
 
     els.append(element("cabin", [ROOF_BREAK_X, BELT_Y, 5.2], [9.65, ROOF_Y, 10.8], cabin_paint))
-    # Unter dem abfallenden Dachende: C-Säule mit Dreiecksfenster
-    els.append(element("cabin rear", [2.75, BELT_Y, 5.2], [ROOF_BREAK_X, ROOF_Y - 0.4, 10.8], cabin_paint))
-    els.append(element("roof rear", [ROOF_BREAK_X - 1.0, ROOF_Y - 0.6, 5.3], [ROOF_BREAK_X, ROOF_Y, 10.7],
+    # Unter dem abfallenden Dachende: D-Säule
+    els.append(element("cabin rear", [ROOF_END[0], BELT_Y, 5.2], [ROOF_BREAK_X, ROOF_END[1] - 0.04, 10.8], cabin_paint))
+    roof_len = (ROOF_BREAK_X - ROOF_END[0]) / math.cos(math.radians(22.5))
+    els.append(element("roof rear", [ROOF_BREAK_X - roof_len, ROOF_Y - 0.5, 5.3], [ROOF_BREAK_X, ROOF_Y, 10.7],
                        lambda face, el: roof if face == "up" else solid(WHITE),
                        {"angle": 22.5, "axis": "z", "origin": [ROOF_BREAK_X, ROOF_Y, 8]}))
 
@@ -424,16 +422,18 @@ def build_elements():
     els.append(element("windshield", [10.1, 3.2, 5.3], [11.4, 3.2 + ws_len, 10.7], windshield_paint,
                        {"angle": 45, "axis": "z", "origin": [11.4, 3.2, 8]}))
 
-    # Heckscheibe 45°, oben am Dachende, darunter Füllstück gegen Lücken
-    drop = ROOF_END[1] - BELT_Y
-    rw_x = ROOF_END[0] - drop
+    # Steile Heckscheibe (22,5° aus der Senkrechten) vom Spoiler bis zur Heckklappe
+    rw_h = ROOF_END[1] - TAILGATE_Y
+    rw_x = ROOF_END[0] - rw_h * math.tan(math.radians(22.5))
 
     def hatch_paint(face, el):
         return {"west": hatch, "up": solid(BLACK)}.get(face, solid(WHITE))
 
-    els.append(element("rear window", [rw_x, BELT_Y, 5.3], [rw_x + 0.6, BELT_Y + drop * math.sqrt(2), 10.7],
-                       hatch_paint, {"angle": -45, "axis": "z", "origin": [rw_x, BELT_Y, 8]}))
-    body("hatch filler", [rw_x + 0.74, BELT_Y, 5.3], [2.75, BELT_Y + 0.72, 10.7])
+    els.append(element("rear window", [rw_x, TAILGATE_Y, 5.3],
+                       [rw_x + 0.55, TAILGATE_Y + rw_h / math.cos(math.radians(22.5)), 10.7],
+                       hatch_paint, {"angle": -22.5, "axis": "z", "origin": [rw_x, TAILGATE_Y, 8]}))
+    # Heckklappe unterhalb der Scheibe
+    body("tailgate", [0.6, BELT_Y, 5.0], [1.7, TAILGATE_Y, 11.0])
 
     # Abstehender Dachspoiler mit dritter Bremsleuchte
     def spoiler_paint(face, el):
@@ -441,12 +441,12 @@ def build_elements():
             return lambda p, s, t: RED if 0.42 < s < 0.58 and t > 0.55 else BLACK
         return solid(BLACK)
 
-    els.append(element("roof spoiler", [ROOF_END[0] - 0.35, ROOF_END[1] - 0.12, 5.35],
-                       [ROOF_END[0] + 0.3, ROOF_END[1] + 0.06, 10.65], spoiler_paint))
+    els.append(element("roof spoiler", [ROOF_END[0] - 0.3, ROOF_END[1] - 0.12, 5.35],
+                       [ROOF_END[0] + 0.25, ROOF_END[1] + 0.05, 10.65], spoiler_paint))
 
     # Haifischflossen-Antenne
-    els.append(element("antenna", [3.8, ROOF_Y, 7.85], [4.6, ROOF_Y + 0.18, 8.15], lambda face, el: solid(BLACK)))
-    els.append(element("antenna tip", [3.8, ROOF_Y + 0.18, 7.88], [4.2, ROOF_Y + 0.32, 8.12],
+    els.append(element("antenna", [2.6, ROOF_Y, 7.85], [3.4, ROOF_Y + 0.18, 8.15], lambda face, el: solid(BLACK)))
+    els.append(element("antenna tip", [2.6, ROOF_Y + 0.18, 7.88], [3.0, ROOF_Y + 0.32, 8.12],
                        lambda face, el: solid(BLACK)))
 
     # Österreichische Kennzeichen als eigene, feiner aufgelöste Flächen
