@@ -88,6 +88,23 @@ node build.mjs
 Das Skript bricht ab, wenn in der Quelle `<!doctype>`, `<html>`, `<head>` oder `<body>`
 auftaucht — damit sie als Artefakt gültig bleibt.
 
+## U-Wert-Rechner (Python)
+
+`tools/uwert.py` rechnet einen Schichtaufbau nach ÖNORM EN ISO 6946 für sich allein —
+mit denselben λ-Werten, Bauteiltypen und R<sub>si</sub>/R<sub>se</sub> wie die Werkbank.
+Nur Python-Standardbibliothek (≥ 3.9).
+
+```sh
+python3 tools/uwert.py                       # Beispielwand → Bericht + uwert.svg
+python3 tools/uwert.py aufbau.json -o wand.svg --ti 20 --te -12
+python3 tools/uwert.py --materialien         # λ-Tabelle und Bauteiltypen
+```
+
+Ausgabe: U-Wert mit Rechenweg, Temperatur an jeder Schichtgrenze, Prüfung gegen
+U<sub>max</sub> (OIB RL 6) und f<sub>Rsi</sub> ≥ 0,71 (ÖNORM B 8110-2), dazu eine SVG-Grafik
+des maßstäblichen Schnitts mit Temperaturkurve. Beispiel-Aufbau im JSON-Format:
+`tools/beispiel_aussenwand.json`. Tests: `cd tools && python3 -m unittest`.
+
 ## GitHub Pages einrichten
 
 Einmalig, nach dem Merge nach `main`:

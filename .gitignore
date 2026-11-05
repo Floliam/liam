@@ -15,3 +15,7 @@ node_modules/
 
 # Environment
 .env
+
+# Python
+__pycache__/
+*.pyc

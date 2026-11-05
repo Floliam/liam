@@ -1,0 +1,22 @@
+{
+  "name": "Außenwand EFH Tirol",
+  "typ": "awAussen",
+  "schichten": [
+    {
+      "material": "Innenputz Kalk-Gips",
+      "d_cm": 1.5
+    },
+    {
+      "material": "Hochlochziegel ungefüllt",
+      "d_cm": 25
+    },
+    {
+      "material": "EPS-Fassadendämmung",
+      "d_cm": 18
+    },
+    {
+      "material": "Außenputz Zement",
+      "d_cm": 1.0
+    }
+  ]
+}
