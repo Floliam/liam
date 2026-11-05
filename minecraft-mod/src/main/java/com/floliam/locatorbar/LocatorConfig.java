@@ -15,6 +15,11 @@ public final class LocatorConfig {
     public static final ForgeConfigSpec.BooleanValue SHOW_NAME;
     public static final ForgeConfigSpec.BooleanValue SHOW_INVISIBLE;
 
+    public static final ForgeConfigSpec.BooleanValue FLIGHT_ALERTS;
+    public static final ForgeConfigSpec.IntValue FLIGHT_ALERT_SECONDS;
+    public static final ForgeConfigSpec.BooleanValue FLIGHT_IGNORE_CREATIVE;
+    public static final ForgeConfigSpec.BooleanValue FLIGHT_ALERT_SOUND;
+
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         b.push("bar");
@@ -35,6 +40,18 @@ public final class LocatorConfig {
                 .define("showName", false);
         SHOW_INVISIBLE = b.comment("Auch Spieler mit Unsichtbarkeitstrank anzeigen")
                 .define("showInvisible", true);
+
+        b.pop();
+        b.push("flightAlert");
+
+        FLIGHT_ALERTS = b.comment("Im eigenen Chat melden, wenn ein Spieler ohne Elytra o.ä. fliegt")
+                .define("enabled", true);
+        FLIGHT_ALERT_SECONDS = b.comment("So viele Sekunden muss jemand frei in der Luft schweben/steigen, bevor gemeldet wird")
+                .defineInRange("seconds", 2, 1, 30);
+        FLIGHT_IGNORE_CREATIVE = b.comment("Spieler im Kreativmodus nicht melden (dort ist Fliegen normal)")
+                .define("ignoreCreative", true);
+        FLIGHT_ALERT_SOUND = b.comment("Bei einer Meldung einen kurzen Ton abspielen (nur für dich hörbar)")
+                .define("sound", true);
 
         b.pop();
         SPEC = b.build();

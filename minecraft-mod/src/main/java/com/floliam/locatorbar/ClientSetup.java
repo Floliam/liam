@@ -2,6 +2,7 @@ package com.floliam.locatorbar;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.ClientRegistry;
 import net.minecraftforge.client.gui.ForgeIngameGui;
 import net.minecraftforge.client.gui.OverlayRegistry;
@@ -46,6 +47,7 @@ public final class ClientSetup {
         while (TOGGLE_KEY.consumeClick()) {
             toggledVisible = !isVisible();
         }
+        FlightDetector.tick(Minecraft.getInstance());
     }
 
     static boolean isVisible() {
