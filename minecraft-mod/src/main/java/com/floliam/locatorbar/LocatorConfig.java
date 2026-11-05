@@ -13,7 +13,7 @@ public final class LocatorConfig {
     public static final ForgeConfigSpec.BooleanValue SHOW_HEIGHT;
     public static final ForgeConfigSpec.BooleanValue SHOW_DISTANCE;
     public static final ForgeConfigSpec.BooleanValue SHOW_NAME;
-    public static final ForgeConfigSpec.BooleanValue HIDE_INVISIBLE;
+    public static final ForgeConfigSpec.BooleanValue SHOW_INVISIBLE;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -33,8 +33,8 @@ public final class LocatorConfig {
                 .define("showDistance", true);
         SHOW_NAME = b.comment("Namen des nächsten Spielers links neben der Leiste anzeigen")
                 .define("showName", false);
-        HIDE_INVISIBLE = b.comment("Unsichtbare Spieler (Trank) nicht anzeigen")
-                .define("hideInvisible", true);
+        SHOW_INVISIBLE = b.comment("Auch Spieler mit Unsichtbarkeitstrank anzeigen")
+                .define("showInvisible", true);
 
         b.pop();
         SPEC = b.build();

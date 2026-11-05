@@ -18,7 +18,7 @@ Spieler und muss auf dem Server **nicht** installiert sein.
 
 1. In CurseForge ein Profil mit **Minecraft 1.18.2 + Forge** anlegen (oder ein vorhandenes nehmen).
 2. Profil → `…` → **Open Folder** → in den Ordner `mods` die Datei
-   `playerlocatorbar-1.18.2-1.0.0.jar` legen.
+   `playerlocatorbar-1.18.2-1.0.1.jar` legen.
 3. Spiel über CurseForge starten — die Mod lädt automatisch mit.
 
 ## Bedienung & Einstellungen
@@ -26,7 +26,8 @@ Spieler und muss auf dem Server **nicht** installiert sein.
 - Taste **J** blendet die Leiste ein/aus (änderbar unter Optionen → Steuerung).
 - Einstellungen: `config/playerlocatorbar-client.toml` im Profilordner (entsteht beim
   ersten Start): Blickfeld der Leiste (`fieldOfView`, 360 = Rundum-Kompass),
-  maximale Entfernung, Name/Entfernung/Höhe ein/aus, unsichtbare Spieler ausblenden.
+  maximale Entfernung, Name/Entfernung/Höhe ein/aus, Spieler mit Unsichtbarkeitstrank
+  anzeigen (`showInvisible`, standardmäßig an).
 
 ## Grenze
 

@@ -4,7 +4,7 @@ license="MIT"
 
 [[mods]]
 modId="playerlocatorbar"
-version="1.0.0"
+version="1.0.1"
 displayName="Player Locator Bar"
 authors="Floliam"
 description='''

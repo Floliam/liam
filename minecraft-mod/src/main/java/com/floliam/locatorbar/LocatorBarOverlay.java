@@ -62,7 +62,7 @@ public class LocatorBarOverlay implements IIngameOverlay {
         double halfFov = LocatorConfig.FIELD_OF_VIEW.get() / 2.0;
         int maxDistance = LocatorConfig.MAX_DISTANCE.get();
         boolean showOutOfView = LocatorConfig.SHOW_OUT_OF_VIEW.get();
-        boolean hideInvisible = LocatorConfig.HIDE_INVISIBLE.get();
+        boolean showInvisible = LocatorConfig.SHOW_INVISIBLE.get();
 
         List<Marker> markers = new ArrayList<>();
         Marker closest = null;
@@ -71,7 +71,7 @@ public class LocatorBarOverlay implements IIngameOverlay {
             if (other == self || (other.isSpectator() && !self.isSpectator())) {
                 continue;
             }
-            if (hideInvisible && other.isInvisibleTo(self)) {
+            if (!showInvisible && other.isInvisibleTo(self)) {
                 continue;
             }
 
