@@ -126,17 +126,56 @@ def rings(u, v, cy, r, th):
     return best
 
 
-def eu_plate(u, v, u0, u1, v0, v1):
-    if not (u0 <= u <= u1 and v0 <= v <= v1):
-        return None
-    if u - u0 < 0.05 or u1 - u < 0.05 or v - v0 < 0.05 or v1 - v < 0.05:
-        return PLATE_TEXT
-    if u - u0 < 0.25:
-        return PLATE_BLUE
-    mid = (v0 + v1) / 2
-    if abs(v - mid) < 0.11 and int((u - u0) * 10) % 3 != 0:
-        return PLATE_TEXT
-    return PLATE
+PLATE_TEXT_STR = "KU*555BP"  # * = Landeswappen (Tirol) zwischen Bezirk und Nummer
+PLATE_PX = (64, 14)
+FONT = {
+    "K": ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
+    "U": ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
+    "5": ["11111", "10000", "11110", "00001", "00001", "10001", "01110"],
+    "B": ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
+    "P": ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+    "*": ["010", "111", "101", "111", "010"],
+}
+A_GLYPH = ["010", "101", "111", "101", "101"]
+AT_RED = (200, 16, 46)
+
+
+def make_plate():
+    w, h = PLATE_PX
+    img = Image.new("RGB", (w, h), PLATE)
+    px = img.load()
+    for x in range(w):
+        px[x, 0] = px[x, h - 1] = PLATE_TEXT
+        px[x, 1] = px[x, h - 2] = AT_RED  # rot-weiß-rote Randstreifen
+    for y in range(h):
+        px[0, y] = px[w - 1, y] = PLATE_TEXT
+    for y in range(1, h - 1):  # EU-Feld mit "A"
+        for x in range(1, 8):
+            px[x, y] = PLATE_BLUE
+    for (dx, dy) in ((3, 2), (5, 2), (2, 3), (6, 3), (3, 4), (5, 4)):
+        px[dx, dy] = (255, 204, 0)
+    for gy, row in enumerate(A_GLYPH):
+        for gx, c in enumerate(row):
+            if c == "1":
+                px[3 + gx, 7 + gy] = (255, 255, 255)
+    x = 10
+    for ch in PLATE_TEXT_STR:
+        glyph = FONT[ch]
+        gy0 = 3 if ch != "*" else 4
+        for gy, row in enumerate(glyph):
+            for gx, c in enumerate(row):
+                if c == "1":
+                    px[x + gx, gy0 + gy] = AT_RED if ch == "*" else PLATE_TEXT
+        x += len(glyph[0]) + 2
+    return img
+
+
+PLATE_IMG = make_plate()
+
+
+def plate_paint(p, s, t):
+    w, h = PLATE_PX
+    return PLATE_IMG.getpixel((min(w - 1, int(s * w)), min(h - 1, int(t * h))))
 
 
 def honeycomb(u, v):
@@ -157,9 +196,6 @@ def front_face(p, s, t):
     au = abs(u)
     if y < 0.95:
         return BLACK
-    plate = eu_plate(u, y, -1.05, 1.05, 1.18, 1.62)
-    if plate:
-        return plate
     if in_poly(u, y, GRILLE):
         if not in_poly(u, y, GRILLE_IN):
             return TRIM
@@ -207,9 +243,6 @@ def rear_face(p, s, t):
     ring = rings(u, y, 2.42, 0.25, 0.07)
     if ring == 1:
         return BLACK
-    plate = eu_plate(u, y, -1.05, 1.05, 1.5, 1.96)
-    if plate:
-        return plate
     if abs(y - 2.2) < 0.03 and au < 1.4:
         return SHADOW_LINE  # Heckklappen-Kante
     return WHITE if y > 1.9 else WHITE_LOW
@@ -240,27 +273,34 @@ def roof(p, s, t):
     return WHITE
 
 
+ROOF_BREAK_X = 3.6  # ab hier fällt das Dach nach hinten um 22,5° ab
+ROOF_END = (ROOF_BREAK_X - 0.92, ROOF_Y - 0.38)  # Dachende über der Heckscheibe
+
+
+def roof_line(x):
+    return ROOF_Y if x >= ROOF_BREAK_X else ROOF_Y - (ROOF_BREAK_X - x) * 0.414
+
+
 def cabin_side(p, s, t):
     x, y, _ = p
-    top = ROOF_Y - 0.14
-    if y < BELT_Y + 0.15 or y > top + 0.05:
-        return WHITE
-    if y < BELT_Y + 0.23:
-        return TRIM  # schwarze Fensterleiste (Black-Optik)
-    # C-Säule schräg, Fensterlinie steigt hinten an (Sportback-Knick)
-    rear_edge = 3.35 + (y - 3.33) * 0.55
-    if x < rear_edge:
-        return WHITE
-    if x < rear_edge + 0.09 or y > top - 0.06 or x > 9.55:
-        return TRIM
-    if x < 4.3 and y < 3.33 + (4.3 - x) * 0.25:
-        return TRIM
-    if 6.25 < x < 6.6:
-        return BLACK  # B-Säule
+    # Fensterlinie: oben folgt sie dem abfallenden Dach, unten steigt sie hinten an
+    top = roof_line(x) - 0.16
+    bottom = BELT_Y + 0.23 + max(0.0, 4.6 - x) * 0.2
+    rear_edge = 3.5 + (y - 3.4) * 0.6  # schräge Hinterkante des Dreiecksfensters
+    if y > top + 0.06 or y < bottom - 0.08 or x < rear_edge - 0.09:
+        return WHITE  # C-/D-Säule und Dachrahmen in Wagenfarbe
+    if y > top or y < bottom or x < rear_edge or x > 9.55:
+        return TRIM  # schwarze Fensterleisten (Black-Optik)
+    if 4.3 < x < 4.42 or 6.25 < x < 6.6:
+        return BLACK  # Trennsteg zum Dreiecksfenster, B-Säule
     k = x - (y - 3.38) * 0.8
-    if 4.4 < k < 4.75 or 7.6 < k < 7.8:
+    if 4.75 < k < 5.05 or 7.6 < k < 7.8:
         return GLASS_HI
     return GLASS
+
+
+def roof_rear_side(p, s, t):
+    return WHITE
 
 
 def windshield(p, s, t):
@@ -275,11 +315,9 @@ def windshield(p, s, t):
 
 
 def hatch(p, s, t):
-    if t < 0.13:
-        if 0.42 < s < 0.58 and 0.05 < t < 0.09:
-            return RED  # dritte Bremsleuchte im Dachspoiler
+    if t < 0.06:
         return BLACK
-    if t > 0.88:
+    if t > 0.86:
         return WHITE
     if s < 0.04 or s > 0.96:
         return TRIM
@@ -357,8 +395,6 @@ def build_elements():
     body("front arch", [10.9, 2.65, zl - 0.08], [13.7, BELT_Y, zr + 0.08])
     body("front bumper", [13.7, 0.75, zl], [15.5, NOSE_Y, zr])
     body("hood", [11.0, 3.0, 4.9], [14.3, 3.25, 11.1])
-    body("hatch filler", [1.9, BELT_Y, 5.3], [2.9, 3.85, 10.7])
-
     # Schräge Haubenspitze: vorne auf Höhe der Schürze, hinten bündig mit der Haube
     def nose_paint(face, el):
         return {"up": nose_top, "north": side_body, "south": side_body}.get(face, solid(WHITE))
@@ -372,7 +408,12 @@ def build_elements():
     def cabin_paint(face, el):
         return {"north": cabin_side, "south": cabin_side, "up": roof, "east": solid(GLASS)}.get(face, solid(WHITE))
 
-    els.append(element("cabin", [2.9, BELT_Y, 5.2], [9.65, ROOF_Y, 10.8], cabin_paint))
+    els.append(element("cabin", [ROOF_BREAK_X, BELT_Y, 5.2], [9.65, ROOF_Y, 10.8], cabin_paint))
+    # Unter dem abfallenden Dachende: C-Säule mit Dreiecksfenster
+    els.append(element("cabin rear", [2.75, BELT_Y, 5.2], [ROOF_BREAK_X, ROOF_Y - 0.4, 10.8], cabin_paint))
+    els.append(element("roof rear", [ROOF_BREAK_X - 1.0, ROOF_Y - 0.6, 5.3], [ROOF_BREAK_X, ROOF_Y, 10.7],
+                       lambda face, el: roof if face == "up" else solid(WHITE),
+                       {"angle": 22.5, "axis": "z", "origin": [ROOF_BREAK_X, ROOF_Y, 8]}))
 
     # Windschutzscheibe 45° geneigt, unten an der Haube, oben an der Dachkante
     ws_len = (ROOF_Y - 3.2) * math.sqrt(2)
@@ -383,20 +424,36 @@ def build_elements():
     els.append(element("windshield", [10.1, 3.2, 5.3], [11.4, 3.2 + ws_len, 10.7], windshield_paint,
                        {"angle": 45, "axis": "z", "origin": [11.4, 3.2, 8]}))
 
-    # Heckscheibe 45°, oben an der Dachkante
-    rw_len = (ROOF_Y - BELT_Y) * math.sqrt(2)
-    rw_x = 2.9 - (ROOF_Y - BELT_Y)
+    # Heckscheibe 45°, oben am Dachende, darunter Füllstück gegen Lücken
+    drop = ROOF_END[1] - BELT_Y
+    rw_x = ROOF_END[0] - drop
 
     def hatch_paint(face, el):
         return {"west": hatch, "up": solid(BLACK)}.get(face, solid(WHITE))
 
-    els.append(element("rear window", [rw_x, BELT_Y, 5.3], [rw_x + 0.9, BELT_Y + rw_len, 10.7], hatch_paint,
-                       {"angle": -45, "axis": "z", "origin": [rw_x, BELT_Y, 8]}))
+    els.append(element("rear window", [rw_x, BELT_Y, 5.3], [rw_x + 0.6, BELT_Y + drop * math.sqrt(2), 10.7],
+                       hatch_paint, {"angle": -45, "axis": "z", "origin": [rw_x, BELT_Y, 8]}))
+    body("hatch filler", [rw_x + 0.74, BELT_Y, 5.3], [2.75, BELT_Y + 0.72, 10.7])
+
+    # Abstehender Dachspoiler mit dritter Bremsleuchte
+    def spoiler_paint(face, el):
+        if face == "west":
+            return lambda p, s, t: RED if 0.42 < s < 0.58 and t > 0.55 else BLACK
+        return solid(BLACK)
+
+    els.append(element("roof spoiler", [ROOF_END[0] - 0.35, ROOF_END[1] - 0.12, 5.35],
+                       [ROOF_END[0] + 0.3, ROOF_END[1] + 0.06, 10.65], spoiler_paint))
 
     # Haifischflossen-Antenne
-    els.append(element("antenna", [3.3, ROOF_Y, 7.85], [4.1, ROOF_Y + 0.18, 8.15], lambda face, el: solid(BLACK)))
-    els.append(element("antenna tip", [3.3, ROOF_Y + 0.18, 7.88], [3.7, ROOF_Y + 0.32, 8.12],
+    els.append(element("antenna", [3.8, ROOF_Y, 7.85], [4.6, ROOF_Y + 0.18, 8.15], lambda face, el: solid(BLACK)))
+    els.append(element("antenna tip", [3.8, ROOF_Y + 0.18, 7.88], [4.2, ROOF_Y + 0.32, 8.12],
                        lambda face, el: solid(BLACK)))
+
+    # Österreichische Kennzeichen als eigene, feiner aufgelöste Flächen
+    els.append(element("plate front", [15.52, 1.18, 6.95], [15.52, 1.64, 9.05],
+                       lambda face, el: plate_paint, None, ("east",)))
+    els.append(element("plate rear", [0.48, 1.5, 6.95], [0.48, 1.96, 9.05],
+                       lambda face, el: plate_paint, None, ("west",)))
 
     for n, z1, z2 in (("mirror left", 4.45, 5.2), ("mirror right", 10.8, 11.55)):
         els.append(element(n, [9.25, 3.3, z1], [9.85, 3.75, z2], lambda face, el: solid(BLACK)))
@@ -475,6 +532,8 @@ def build(pack_dir):
             else:
                 pxu = DETAIL_PXU if paint in (front_face, rear_face, nose_top) else PXU
                 w, h = max(1, round(w_u * pxu)), max(1, round(h_u * pxu))
+                if paint is plate_paint:
+                    w, h = PLATE_PX
                 x, y = packer.alloc(w, h)
                 atlas.paste(paint_face(paint, face, el, w, h), (x, y))
                 region = (x, y, x + w, y + h)

@@ -1,10 +1,12 @@
 # Audi A3 Totem (Resourcepack, Minecraft 1.18.2)
 
 Ersetzt das Totem der Unsterblichkeit durch ein **3D-Modell** eines weißen Audi A3 Sportback
-S line (2017) mit silbernen Felgen und schwarzen Details (Ringe, Grill, Spiegel, Fensterleisten).
+S line (2017) mit silbernen Felgen und schwarzen Details (Ringe, Grill, Spiegel, Fensterleisten) und österreichischem Kennzeichen KU 555 BP.
 Ein Resourcepack wirkt nur bei dir: andere Spieler sehen weiterhin das normale Totem.
 
 ![Vorschau](vorschau.png)
+
+![Seitenansicht](seitenansicht.png)
 
 ## Installation (CurseForge)
 
