@@ -21,7 +21,7 @@ Spieler und muss auf dem Server **nicht** installiert sein.
 
 1. In CurseForge ein Profil mit **Minecraft 1.18.2 + Forge** anlegen (oder ein vorhandenes nehmen).
 2. Profil → `…` → **Open Folder** → in den Ordner `mods` die Datei
-   `playerlocatorbar-1.18.2-1.1.0.jar` legen.
+   `playerlocatorbar-1.18.2-1.1.1.jar` legen.
 3. Spiel über CurseForge starten — die Mod lädt automatisch mit.
 
 ## Bedienung & Einstellungen
@@ -36,7 +36,7 @@ Spieler und muss auf dem Server **nicht** installiert sein.
 
 Der Server sagt dem Client nicht, ob jemand fliegt. Die Mod erkennt es an der Bewegung:
 Wer frei in der Luft ist, wird durch die Schwerkraft immer schneller nach unten. Wer
-stattdessen länger als 2 Sekunden schwebt, steigt oder gleichmäßig langsam sinkt, wird gemeldet.
+stattdessen länger als 3 Sekunden schwebt, steigt oder gleichmäßig langsam sinkt, wird gemeldet.
 
 Nicht gemeldet werden: Elytra-Gleiten, Reiten/Boot/Lore, Wasser und Lava, Leitern und Ranken,
 Spinnennetz, Pulverschnee, Gerüste, Honigblöcke, Dreizack mit Sog, Zuschauer und (abschaltbar)

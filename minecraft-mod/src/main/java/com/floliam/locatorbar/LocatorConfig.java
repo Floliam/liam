@@ -47,7 +47,7 @@ public final class LocatorConfig {
         FLIGHT_ALERTS = b.comment("Im eigenen Chat melden, wenn ein Spieler ohne Elytra o.ä. fliegt")
                 .define("enabled", true);
         FLIGHT_ALERT_SECONDS = b.comment("So viele Sekunden muss jemand frei in der Luft schweben/steigen, bevor gemeldet wird")
-                .defineInRange("seconds", 2, 1, 30);
+                .defineInRange("seconds", 3, 1, 30);
         FLIGHT_IGNORE_CREATIVE = b.comment("Spieler im Kreativmodus nicht melden (dort ist Fliegen normal)")
                 .define("ignoreCreative", true);
         FLIGHT_ALERT_SOUND = b.comment("Bei einer Meldung einen kurzen Ton abspielen (nur für dich hörbar)")
