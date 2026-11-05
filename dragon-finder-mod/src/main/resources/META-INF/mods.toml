@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[40,)"
+license="MIT"
+
+[[mods]]
+modId="dragonfinder"
+version="1.0.0"
+displayName="Dragon Finder"
+authors="Floliam"
+description='''
+Rein clientseitiger Drachenfinder für die Mod Ice and Fire.
+Zeigt Art, Entfernung, Höhe und Richtung des nächsten Drachen und findet Drachenhorte (Gold-, Silber-, Kupferhaufen) in geladenen Chunks.
+Meldungen erscheinen nur in deinem eigenen Chat. Auf dem Server muss nichts installiert werden.
+'''
+
+[[dependencies.dragonfinder]]
+    modId="forge"
+    mandatory=true
+    versionRange="[40,)"
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.dragonfinder]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.18.2,1.19)"
+    ordering="NONE"
+    side="CLIENT"

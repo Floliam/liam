@@ -4,15 +4,24 @@ on:
   push:
     paths:
       - 'minecraft-mod/**'
+      - 'dragon-finder-mod/**'
       - '.github/workflows/minecraft-mod.yml'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: minecraft-mod
+            artifact: playerlocatorbar-1.18.2-forge
+          - dir: dragon-finder-mod
+            artifact: dragonfinder-1.18.2-forge
     defaults:
       run:
-        working-directory: minecraft-mod
+        working-directory: ${{ matrix.dir }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +40,6 @@ jobs:
       - name: Jar hochladen
         uses: actions/upload-artifact@v4
         with:
-          name: playerlocatorbar-1.18.2-forge
-          path: minecraft-mod/build/libs/*.jar
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.dir }}/build/libs/*.jar
           if-no-files-found: error
