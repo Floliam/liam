@@ -450,9 +450,9 @@ def build_elements():
                        lambda face, el: solid(BLACK)))
 
     # Österreichische Kennzeichen als eigene, feiner aufgelöste Flächen
-    els.append(element("plate front", [15.52, 1.18, 6.95], [15.52, 1.64, 9.05],
+    els.append(element("plate front", [15.52, 1.12, 6.65], [15.52, 1.72, 9.35],
                        lambda face, el: plate_paint, None, ("east",)))
-    els.append(element("plate rear", [0.48, 1.5, 6.95], [0.48, 1.96, 9.05],
+    els.append(element("plate rear", [0.48, 1.48, 6.65], [0.48, 2.08, 9.35],
                        lambda face, el: plate_paint, None, ("west",)))
 
     for n, z1, z2 in (("mirror left", 4.45, 5.2), ("mirror right", 10.8, 11.55)):
@@ -569,7 +569,9 @@ DISPLAY = {
     "ground": {"rotation": [0, -38, 0], "translation": [0, 0, 0], "scale": [0.4, 0.4, 0.4]},
     "head": {"rotation": [0, -90, 0], "translation": [0, 3, 0], "scale": [0.8, 0.8, 0.8]},
     "thirdperson_righthand": {"rotation": [75, 45, 0], "translation": [0, 2.5, 0], "scale": [0.38, 0.38, 0.38]},
-    "firstperson_righthand": {"rotation": [8, -60, 0], "translation": [1.5, 3.5, 0], "scale": [0.45, 0.45, 0.45]},
+    # Waagrecht in der Hand, Front mit Kennzeichen schräg zur Kamera (mit Perspektive nachgerechnet)
+    "firstperson_righthand": {"rotation": [-10, -160, 10], "translation": [-1, 3.5, -1], "scale": [0.62, 0.62, 0.62]},
+    "firstperson_lefthand": {"rotation": [-10, -20, 10], "translation": [1, 3.5, -1], "scale": [0.62, 0.62, 0.62]},
 }
 
 if __name__ == "__main__":

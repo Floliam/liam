@@ -8,6 +8,8 @@ Ein Resourcepack wirkt nur bei dir: andere Spieler sehen weiterhin das normale T
 
 ![Seitenansicht](seitenansicht.png)
 
+![In der Hand](hand-ansicht.png)
+
 ## Installation (CurseForge)
 
 1. `Audi-A3-Totem.zip` herunterladen (nicht entpacken).

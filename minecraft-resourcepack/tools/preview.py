@@ -125,3 +125,90 @@ def sheet(pack_dir, out):
 
 if __name__ == "__main__":
     sheet(sys.argv[1], sys.argv[2])
+
+
+def first_person(model, tex, hand="left", display=None, width=960, height=540, sub=10):
+    """Ich-Perspektive wie im Spiel: Arm-Versatz und Display-Transformation wie
+    ItemInHandRenderer/ItemTransform, echte Perspektive mit 70° Sichtfeld."""
+    right = hand == "right"
+    d = display or model["display"]
+    key = "firstperson_righthand" if right else "firstperson_lefthand"
+    mirror = False
+    if key not in d:
+        key, mirror = "firstperson_righthand", not right
+    tf = d[key]
+    rx, ry, rz = tf["rotation"]
+    tx, ty, tz = tf["translation"]
+    if mirror:
+        ry, rz, tx = -ry, -rz, -tx
+    sign = 1 if right else -1
+    base = np.array([sign * 0.56, -0.52, -0.72]) + np.array([tx, ty, tz]) / 16
+    rot = euler_quat_matrix(rx, ry, rz)
+    sc = np.array(tf["scale"], float)
+    f = 1 / math.tan(math.radians(35))
+    aspect = width / height
+
+    tex_a = np.asarray(tex.convert("RGBA")).astype(np.float32)
+    th, tw = tex_a.shape[:2]
+    img = np.zeros((height, width, 4), np.float32)
+    zbuf = np.full((height, width), 1e9, np.float32)
+
+    def view(q):
+        return rot @ ((q / 16 - 0.5) * sc) + base
+
+    def proj(v):
+        return np.array([(f * v[0] / -v[2] / aspect + 1) * width / 2, (1 - f * v[1] / -v[2]) * height / 2, -v[2]])
+
+    for el in model["elements"]:
+        erot = el.get("rotation")
+        for face, fd in el["faces"].items():
+            pts = [np.array(c, float) for c in corners(face, el["from"], el["to"])]
+            if erot:
+                o = np.array(erot["origin"], float)
+                m = axis_rot(erot["axis"], erot["angle"])
+                pts = [m @ (q - o) + o for q in pts]
+            tl, tr, bl = (view(q) for q in pts)
+            a3, b3 = tr - tl, bl - tl
+            n = np.cross(b3, a3)
+            if np.linalg.norm(n) < 1e-12 or n @ (-tl) <= 0:
+                continue  # Rückseite (von der Kamera abgewandt)
+            n = n / np.linalg.norm(n)
+            shade = 0.55 + 0.45 * max(0.0, float(n @ LIGHT))
+            u1, v1, u2, v2 = fd["uv"]
+            for i in range(sub):
+                for j in range(sub):
+                    s0, t0, ds = i / sub, j / sub, 1 / sub
+                    c00 = proj(tl + s0 * a3 + t0 * b3)
+                    c10 = proj(tl + (s0 + ds) * a3 + t0 * b3)
+                    c01 = proj(tl + s0 * a3 + (t0 + ds) * b3)
+                    c11 = proj(tl + (s0 + ds) * a3 + (t0 + ds) * b3)
+                    xs_ = [c[0] for c in (c00, c10, c01, c11)]
+                    ys_ = [c[1] for c in (c00, c10, c01, c11)]
+                    x0, x1 = max(0, int(min(xs_))), min(width, int(max(xs_)) + 2)
+                    y0, y1 = max(0, int(min(ys_))), min(height, int(max(ys_)) + 2)
+                    if x0 >= x1 or y0 >= y1:
+                        continue
+                    yy, xx = np.mgrid[y0:y1, x0:x1] + 0.5
+                    ea, eb = c10 - c00, c01 - c00
+                    det = ea[0] * eb[1] - ea[1] * eb[0]
+                    if abs(det) < 1e-9:
+                        continue
+                    dx, dy = xx - c00[0], yy - c00[1]
+                    ls = (dx * eb[1] - dy * eb[0]) / det
+                    lt = (ea[0] * dy - ea[1] * dx) / det
+                    mask = (ls >= -0.02) & (ls <= 1.02) & (lt >= -0.02) & (lt <= 1.02)
+                    if not mask.any():
+                        continue
+                    depth = c00[2] + ls * ea[2] + lt * eb[2]
+                    s = np.clip(s0 + ls * ds, 0, 1)
+                    t = np.clip(t0 + lt * ds, 0, 1)
+                    ui = np.clip(((u1 + s * (u2 - u1)) / 16 * tw).astype(int), 0, tw - 1)
+                    vi = np.clip(((v1 + t * (v2 - v1)) / 16 * th).astype(int), 0, th - 1)
+                    col = tex_a[vi, ui]
+                    sub_img = img[y0:y1, x0:x1]
+                    sub_z = zbuf[y0:y1, x0:x1]
+                    mask &= (col[..., 3] > 25) & (depth < sub_z)
+                    sub_z[mask] = depth[mask]
+                    sub_img[mask, :3] = col[mask, :3] * shade
+                    sub_img[mask, 3] = 255
+    return Image.fromarray(img.clip(0, 255).astype(np.uint8), "RGBA")
